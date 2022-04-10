@@ -1,7 +1,7 @@
 #include "matrix_generator.h"
 #include <random>
 #include <cmath>
-#include <time.h>
+#include <chrono>
 
 double getLowerBound(int variant) {
 	return -std::exp2(variant / 4);
@@ -11,9 +11,9 @@ double getUpperBound(int variant) {
 	return std::exp2(variant / 4);
 }
 
-Matrix<double> generateRealMatrix(size_t size, int variant) {
+Matrix<double> generateRealMatrix(size_t size, int variant, unsigned int seed) {
 	Matrix<double> m{ size };
-	std::default_random_engine generator{}; //(unsigned int)time(0)
+	std::default_random_engine generator{ seed };
 	std::uniform_real_distribution<double> dist{ getLowerBound(variant), getUpperBound(variant) };
 
 	for (int i = 0; i < size; i++) {
@@ -31,9 +31,9 @@ Matrix<double> generateRealMatrix(size_t size, int variant) {
 	return m;
 }
 
-Vector<double> generateRealVector(size_t size, int variant) {
+Vector<double> generateRealVector(size_t size, int variant, unsigned int seed) {
 	Vector<double> v{ size };
-	std::default_random_engine generator{};
+	std::default_random_engine generator{ seed };
 	std::uniform_real_distribution<double> dist{ getLowerBound(variant), getUpperBound(variant) };
 
 	for (int i = 0; i < size; i++) {
