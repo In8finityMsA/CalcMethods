@@ -11,12 +11,14 @@
 
 #define epsilon 10e-15
 
-template <typename ValueType>
-class Matrix : public LinAlEntity<ValueType> {
+template <typename T>
+class Matrix {
 	friend class MatrixUtils;
 
 public:
 #pragma region ctr/dtr
+	Matrix() noexcept {}
+
 	Matrix(size_t size) : size_(size) {
 		AllocateMemory(size);
 	}
@@ -47,8 +49,8 @@ public:
 #pragma endregion
 
 #pragma region arithmetics
-	Matrix<ValueType> operator*(const Matrix<ValueType>& rhs) {
-		Matrix<ValueType> out{size_};
+	Matrix<T> operator*(const Matrix<T>& rhs) {
+		Matrix<T> out{size_};
 		for (size_t i = 0; i < size_; i++) {
 			for (size_t j = 0; j < size_; j++) {
 				for (size_t k = 0; k < size_; k++) {
@@ -59,8 +61,8 @@ public:
 		return out;
 	}
 
-	Vector<ValueType> operator*(const Vector<ValueType>& rhs) {
-		Vector<ValueType> out{ size_ };
+	Vector<T> operator*(const Vector<T>& rhs) {
+		Vector<T> out{ size_ };
 		for (size_t i = 0; i < size_; i++) {
 			for (size_t k = 0; k < size_; k++) {
 				out.data[i] += data[i][k] * rhs.data[k];
@@ -77,8 +79,8 @@ public:
 		}
 	}
 
-	Matrix<ValueType> GetTranspose() const {
-		Matrix<ValueType> t{ size_ };
+	Matrix<T> GetTranspose() const {
+		Matrix<T> t{ size_ };
 		for (size_t i = 0; i < size_; i++) {
 			for (size_t j = i; j < size_; j++) {
 				t.data[j][i] = data[i][j];
@@ -89,38 +91,38 @@ public:
 #pragma endregion
 
 #pragma region norms
-	ValueType QuadraticNorm() {
-		ValueType norm = 0;
+	T QuadraticNorm() {
+		T norm = 0;
 		for (size_t i = 0; i < size_; i++) {
-			ValueType sum = 0;
+			T sum = 0;
 			for (size_t j = 0; j < size_; j++) {
-				sum += data[i][j];
+				sum += std::abs(data[i][j]);
 			}
 			norm = sum > norm ? sum : norm;
 		}
+		return norm;
 	}
 #pragma endregion
 
 #pragma region algo
-	void ChangeRow(size_t first, size_t second) override {
+	/*void ChangeRow(size_t first, size_t second) override {
 		std::swap(data[first], data[second]);
 	}
-	void MultiplyRow(size_t row, ValueType value) override {
+	void MultiplyRow(size_t row, T value) override {
 		for (size_t j = 0; j < size_; j++) {
 			data[row][j] *= value;
 		}
 	}
-	void AddRowMultiplied(size_t first, size_t second, ValueType value) override {
+	void AddRowMultiplied(size_t first, size_t second, T value) override {
 		for (size_t j = 0; j < size_; j++) {
 			data[second][j] += data[first][j] * value;
 		}
-	}
-	
+	}*/
 #pragma endregion
 
 #pragma region getters
-	static Matrix<ValueType> GetIdentity(size_t size) {
-		Matrix<ValueType> identity{ size };
+	static Matrix<T> GetIdentity(size_t size) {
+		Matrix<T> identity{ size };
 		for (size_t i = 0; i < size; i++) {
 			identity.data[i][i] = 1;
 		}
@@ -131,19 +133,19 @@ public:
 		return size_;
 	}
 
-	ValueType& operator()(int row, int column) {
+	inline T& operator()(int row, int column) noexcept {
 		return data[row][column];
 	}
 
-	const ValueType& operator()(int row, int column) const {
+	inline const T& operator()(int row, int column) const noexcept {
 		return data[row][column];
 	}
 
-	ValueType* operator[](int index) {
+	T* operator[](int index) {
 		return data[index];
 	}
 
-	const ValueType* operator[](int index) const {
+	const T* operator[](int index) const {
 		return data[index];
 	}
 #pragma endregion
@@ -161,8 +163,8 @@ public:
 #pragma endregion
 
 private:
-	ValueType** data;
-	size_t size_;
+	T** data = nullptr;
+	size_t size_ = 0;
 
 
 private:
@@ -172,7 +174,7 @@ private:
 		size_ = matrix.size_;
 		AllocateMemory(size_);
 		for (size_t i = 0; i < size_; i++) {
-			memcpy(data[i], matrix.data[i], sizeof(ValueType) * size_);
+			memcpy(data[i], matrix.data[i], sizeof(T) * size_);
 		}
 	}
 
@@ -185,9 +187,9 @@ private:
 	}
 
 	void AllocateMemory(size_t size) {
-		data = new ValueType * [size] {};
+		data = new T * [size] {};
 		for (size_t i = 0; i < size; i++) {
-			data[i] = new ValueType[size]{};
+			data[i] = new T[size]{};
 		}
 	}
 

@@ -5,13 +5,14 @@
 #include <new>
 #include <cstring>
 
-template <typename ValueType>
-class Vector : public LinAlEntity<ValueType> {
-	template<typename ValueType>
+template <typename T>
+class Vector {
+	template<typename T>
 	friend class Matrix;
 	friend class MatrixUtils;
 
 public:
+#pragma region ctor/dtor
 	Vector(size_t size) : size_(size) {
 		AllocateMemory(size);
 	}
@@ -39,45 +40,103 @@ public:
 	virtual ~Vector() {
 		FreeMemory();
 	}
+#pragma endregion
 
-	size_t size() {
+#pragma region arithmetic
+	Vector<T>& operator += (const Vector<T>& other) {
+		for (size_t i = 0; i < size_; i++) {
+			data[i] += other.data[i];
+		}
+		return *this;
+	}
+
+	Vector<T> operator + (const Vector<T>& other) const {
+		Vector<T> res(*this);
+		for (size_t i = 0; i < size_; i++) {
+			res.data[i] = data[i] + other.data[i];
+		}
+		return res;
+	}
+
+	Vector<T>& operator -= (const Vector<T>& other) {
+		for (size_t i = 0; i < size_; i++) {
+			data[i] -= other.data[i];
+		}
+		return *this;
+	}
+
+	Vector<T> operator - (const Vector<T>& other) const {
+		Vector<T> res(size_);
+		for (size_t i = 0; i < size_; i++) {
+			res.data[i] = data[i] - other.data[i];
+		}
+		return res;
+	}
+#pragma endregion
+
+#pragma region norms
+	T QuadraticNorm() const {
+		T norm = 0;
+		for (size_t i = 0; i < size_; i++) {
+			norm = std::abs(data[i]) > norm ? std::abs(data[i]) : norm;
+		}
+		return norm;
+	}
+
+	T OctahedronNorm() const {
+		T norm = 0;
+		for (size_t i = 0; i < size_; i++) {
+			norm += std::abs(data[i]);
+		}
+		return norm;
+	}
+#pragma endregion
+
+#pragma region getters
+	size_t Size() const {
 		return size_;
 	}
 
-	ValueType& operator()(int index) {
+	T& operator()(int index) {
 		return data[index];
 	}
 
-	const ValueType& operator()(int index) const {
+	const T& operator()(int index) const {
 		return data[index];
 	}
+#pragma endregion
 
-	void ChangeRow(size_t first, size_t second) override {
+#pragma region algo
+	/*void ChangeRow(size_t first, size_t second) override {
 		std::swap(data[first], data[second]);
 	}
-	void MultiplyRow(size_t row, ValueType value) override {
+	void MultiplyRow(size_t row, T value) override {
 		data[row] *= value;
 	}
-	void AddRowMultiplied(size_t first, size_t second, ValueType value) override {
+	void AddRowMultiplied(size_t first, size_t second, T value) override {
 		data[second] += data[first] * value;
-	}
+	}*/
+#pragma endregion
 
+#pragma region presentation
 	void print() {
 		for (size_t i = 0; i < size_; i++) {
 			std::cout << std::setw(6) << std::setprecision(3) << data[i] << std::endl;
 		}
 	}
+#pragma endregion
 
 private:
-	ValueType* data;
+	T* data;
 	size_t size_;
 
 private:
+#pragma region ctor/dtor helpers
 	void Copy(const Vector& vector) {
-		std::cout << "Copied vector\n";
+		//std::cout << "Copied vector\n";
 		size_ = vector.size_;
 		AllocateMemory(size_);
-		memcpy(data, vector.data, sizeof(ValueType) * size_);
+		memcpy(data, vector.data, sizeof(T) * size_);
 	}
 
 	void Move(Vector&& vector) noexcept {
@@ -89,12 +148,13 @@ private:
 	}
 
 	void AllocateMemory(size_t size) {
-		data = new ValueType[size]{};
+		data = new T[size]{};
 	}
 
 	void FreeMemory() noexcept {
 		delete[] data;
 	}
+#pragma endregion
 
 };
 

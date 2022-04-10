@@ -19,65 +19,186 @@ public:
 		MATRIX
 	};
 
-	template<typename ValueType>
-	static Vector<ValueType> LinearSolve(Matrix<ValueType> a, Vector<ValueType> b) {
+	template<typename T>
+	struct LUP_Dense {
+		Matrix<T> LU;
+		std::vector<size_t> p;
+	};
+
+	template<typename T>
+	struct LUP {
+		LUP(size_t s) {
+			L = Matrix<T>::GetIdentity(s);
+			U = Matrix<T>(s);
+			P = Matrix<T>(s);
+		}
+
+		Matrix<T> L;
+		Matrix<T> U;
+		Matrix<T> P;
+	};
+
+	template<typename T>
+	struct LDLT_Dense {
+		Matrix<T> LLT;
+		std::vector<int> d;
+	};
+
+	template<typename T>
+	struct LDLT {
+		LDLT(size_t s) {
+			L = Matrix<T>(s);
+			D = Matrix<T>(s);
+			LT = Matrix<T>(s);
+		}
+
+		Matrix<T> L;
+		Matrix<T> D;
+		Matrix<T> LT;
+	};
+
+#pragma region lin_solve
+	template<typename T>
+	static Vector<T> LinearSolve(Matrix<T> a, Vector<T> b) {
 		Gauss(a, b, GaussForm::TRIANGLE, LeadingChoice::COLUMN);
 		return SolveUpperTriangle(a, b);
 	}
 
-	template<typename ValueType>
-	static Vector<ValueType> LinearSolveWithLU(Matrix<ValueType> a, Vector<ValueType> b) {
-		auto LP = GaussLU(a, Vector<ValueType>(b));
-		LP.second.Transpose();
-		b = LP.second * b;
-		auto y = SolveLowerTriangle(LP.first, b);
-		return SolveUpperTriangle(a, y);
+	template<typename T>
+	static Vector<T> LinearSolveWithLUP(const LUP_Dense<T>& dense, Vector<T> b) {
+		// Permute vector b
+		permutation(b, dense.p);
+		// Pass true to make it ignore diagonal values and use ones instead
+		auto y = SolveLowerTriangle(dense.LU, b, true);
+		return SolveUpperTriangle(dense.LU, y);
 	}
 
+	template<typename T>
+	static Vector<T> LinearSolveWithLDLT(LDLT_Dense<T>& dense, const Vector<T>& b) {
+		auto y = SolveLowerTriangle(dense.LLT, b, false);
+		for (size_t i = 0; i < dense.LLT.size_; i ++) {
+			dense.LLT.data[i][i] *= dense.d[i];
+		}
+		auto res = SolveUpperTriangle(dense.LLT, y);
 
-	template<typename ValueType>
-	static Vector<ValueType> LinearSolveWithLDL(Matrix<ValueType> a, Vector<ValueType> b) {
-		Vector<ValueType>b_copy (b);
-		Gauss(a, b_copy, GaussForm::TRIANGLE, LeadingChoice::NO_CHOICE);
-		std::vector<bool> sign_negative(a.size_, false);
-		for (size_t i = 0; i < a.size_; i++) {
-			ValueType divisor = sqrt(fabs(a[i][i]));
-			if (a[i][i] < 0) {
-				divisor *= -1;
-				sign_negative[i] = true;
+		// return LT to initial form
+		for (size_t i = 0; i < dense.LLT.size_; i++) {
+			dense.LLT.data[i][i] *= dense.d[i];
+		}
+		return res;
+	}
+#pragma endregion
+
+#pragma region decomposition
+	template<typename T>
+	static LUP_Dense<T> DecompositionLU(Matrix<T> a) {
+		auto p = GaussLU(a);
+		return { a, p };
+	}
+
+	template<typename T>
+	static LUP<T> UndenseLUP(LUP_Dense<T> dense) {
+		size_t s = dense.LU.size_;
+		LUP<T> lup{ s };
+		
+		for (size_t i = 0; i < s; i++) {
+			lup.U.data[i][i] = dense.LU.data[i][i];
+			for (size_t j = 0; j < i; j++) {
+				lup.L.data[i][j] = dense.LU.data[i][j];
+				lup.U.data[s-1-i][s-1-j] = dense.LU.data[s-1-i][s-1-j];
 			}
-			
-			for (size_t j = i; j < a.size_; j++) {
+		}
+
+		size_t temp, temp_index;
+		for (size_t i = 0; i < s; i++) {
+			lup.P.data[i][dense.p[i]] = 1;
+		}
+		return lup;
+	}
+
+	template<typename T>
+	static LDLT_Dense<T> DecompositionLDLT(Matrix<T> a) {
+		GaussLDLT(a);
+
+		size_t s = a.size_;
+		std::vector<int> d(s, 1);
+		for (size_t i = 0; i < s; i++) {
+			T divisor = sqrt(fabs(a[i][i]));
+			int sign = a[i][i] >= 0 ? 1 : -1;
+			d[i] = sign;
+
+			a.data[i][i] /= divisor;
+			for (size_t j = i + 1; j < s; j++) {
 				a.data[i][j] /= divisor;
+				a.data[j][i] = a.data[i][j];
+				a.data[i][j] *= sign;
 			}
 		}
-		Matrix<ValueType> L = a.GetTranspose();
-		for (size_t i = 0; i < a.size_; i++) {
-			if (sign_negative[i]) {
-				for (size_t j = i; j < a.size_; j++) {
-					a.data[i][j] *= -1;
-				}
-			}
-		}
-		std::cout << "Matrix L:\n";
-		(L).print();
-		std::cout << "Matrix LT:\n";
-		(a).print();
-		std::cout << "Matrix A:\n";
-		(L* a).print();
-
-		auto y = SolveLowerTriangle(L, b);
-		return SolveUpperTriangle(a, y);
+		return {a, d};
 	}
 
-	template<typename ValueType>
-	static Matrix<ValueType> Inverse(Matrix<ValueType> m) noexcept {
-		Matrix<ValueType> inv = Matrix<ValueType>::GetIdentity(m.size_);
+	template<typename T>
+	static LDLT<T> UndenseLDLT(LDLT_Dense<T> dense) {
+		size_t s = dense.LLT.size_;
+		LDLT<T> ldlt{ s };
+
+		for (size_t i = 0; i < s; i++) {
+			ldlt.L.data[i][i] = dense.LLT.data[i][i] * dense.d[i];
+			ldlt.LT.data[i][i] = ldlt.L.data[i][i];
+			ldlt.D.data[i][i] = dense.d[i];
+			for (size_t j = 0; j < i; j++) {
+				ldlt.L.data[i][j] = dense.LLT.data[i][j] * dense.d[j];
+				ldlt.LT.data[s - 1 - i][s - 1 - j] = dense.LLT.data[s - 1 - i][s - 1 - j];
+			}
+		}
+		return ldlt;
+	}
+#pragma endregion
+
+#pragma region iterations
+	template<typename T>
+	static Vector<T> Relaxation(Matrix<T> m, Vector<T> b, T relax_param, T eps) noexcept {
+		// Make matrix B = E - DA and vector g = Db
+		size_t s = m.size_;
+		for (size_t i = 0; i < s; i++) {
+			T divisor = m.data[i][i];
+			for (size_t j = 0; j < s; j++) {
+				m.data[i][j] /= -divisor;
+			}
+			b.data[i] /= divisor;
+			m.data[i][i] = 0;
+		}
+
+		Vector<T> x_cur{ s };
+		for (size_t i = 0; i < s; i++) {
+			x_cur.data[i] = 1;
+		}
+		Vector<T> x_prev{ s };
+		int iter = 1;
+		do {
+			std::cout << "Iteration: " << iter++ << std::endl;
+			x_prev = x_cur;
+			for (size_t i = 0; i < s; i++) {
+				T new_coord = b.data[i];
+				for (size_t j = 0; j < s; j++) {
+					new_coord += m.data[i][j] * x_cur.data[j];
+				}
+				new_coord *= relax_param;
+				x_cur.data[i] = new_coord + (1 - relax_param) * x_cur.data[i];
+			}
+		} while (((x_cur - x_prev).QuadraticNorm() >= eps));
+		return x_cur;
+	}
+#pragma endregion
+
+	template<typename T>
+	static Matrix<T> Inverse(Matrix<T> m) noexcept {
+		Matrix<T> inv = Matrix<T>::GetIdentity(m.size_);
 		Gauss(m, inv, GaussForm::DIAGONAL, LeadingChoice::COLUMN);
 
 		// Divide by diagonal element to get identity (currently it is just diagonal)
 		for (size_t i = 0; i < m.size_; i++) {
-			ValueType divisor = m.data[i][i];
+			T divisor = m.data[i][i];
 			for (size_t j = 0; j < m.size_; j++) {
 				inv[i][j] /= divisor;
 			}
@@ -87,20 +208,21 @@ public:
 	}
 
 private:
-	template<typename ValueType>
-	static void Gauss(Matrix<ValueType>& m, LinAlEntity<ValueType>& ext, GaussForm gf, LeadingChoice lc) noexcept {
-		for (size_t iter = 0; iter < m.size_; iter++) {
-
+#pragma region gauss
+	template<typename T>
+	static void Gauss(Matrix<T>& m, Vector<T>& ext, GaussForm gf, LeadingChoice lc) noexcept {
+		for (size_t iter = 0; iter < m.size_ - 1; iter++) {
 			if (lc == LeadingChoice::COLUMN) {
-				ChooseByColumn(m, ext, iter);
+				ChooseByColumn(m, &ext, iter);
 			}
-
-			size_t i = gf == GaussForm::DIAGONAL ? 0 : iter;
+			// If making diagonal we need to add row to all the other rows. If triangle - only to rows under current
+			size_t i = gf == GaussForm::DIAGONAL ? 0 : iter + 1; 
+			// Add current row to all under it
 			for (; i < m.size_; i++) {
 				if (i == iter) continue;
 
-				ValueType multiplier = -m.data[i][iter] / m.data[iter][iter];
-				ext.AddRowMultiplied(iter, i, multiplier);
+				T multiplier = -m.data[i][iter] / m.data[iter][iter];
+				ext.data[i] = ext.data[iter] * multiplier;
 				for (size_t j = iter; j < m.size_; j++) {
 					m.data[i][j] += m.data[iter][j] * multiplier;
 				}
@@ -108,48 +230,79 @@ private:
 		}
 	}
 
-	template<typename ValueType>
-	static std::pair<Matrix<ValueType>, Matrix<ValueType>> GaussLU(Matrix<ValueType>& m, Vector<ValueType> ext) noexcept {
-		Matrix<ValueType> L = Matrix<ValueType>::GetIdentity(m.size_);
-		Matrix<ValueType> P = Matrix<ValueType>::GetIdentity(m.size_);
-		//std::vector<size_t> permut;
-		/*permut.reserve(m.size_);
-		for (size_t i = 0; i < m.size_; i++) {
-			permut.push_back(i);
-		}*/
-
-		for (size_t iter = 0; iter < m.size_; iter++) {
-
-			auto max_index = ChooseByColumn(m, ext, iter);
-			// Change rows in L and create P
-			if (max_index != iter) {
-				for (size_t j = 0; j < iter; j++) {
-					std::swap(L[iter][j], L[max_index][j]);
-				}
-				P.ChangeRow(iter, max_index);
-				//std::swap(permut[iter], permut[max_index]);
+	template<typename T>
+	static void Gauss(Matrix<T>& m, Matrix<T>& ext, GaussForm gf, LeadingChoice lc) noexcept {
+		for (size_t iter = 0; iter < m.size_ - 1; iter++) {
+			if (lc == LeadingChoice::COLUMN) {
+				ChooseByColumn(m, &ext, iter);
 			}
-
-			for (size_t i = iter; i < m.size_; i++) {
+			// If making diagonal we need to add row to all the other rows. If triangle - only to rows under current
+			size_t i = gf == GaussForm::DIAGONAL ? 0 : iter + 1;
+			// Add current row to all under it
+			for (; i < m.size_; i++) {
 				if (i == iter) continue;
 
-				ValueType multiplier = -m.data[i][iter] / m.data[iter][iter];
-				L[i][iter] = -multiplier;
-				ext.AddRowMultiplied(iter, i, multiplier);
+				T multiplier = -m.data[i][iter] / m.data[iter][iter];
+				for (size_t j = 0; j < iter; j++) {
+					ext.data[i][j] += ext.data[iter][j] * multiplier;
+				}
 				for (size_t j = iter; j < m.size_; j++) {
+					ext.data[i][j] += ext.data[iter][j] * multiplier;
 					m.data[i][j] += m.data[iter][j] * multiplier;
 				}
 			}
 		}
-		return {L, P};
 	}
 
-	template<typename ValueType>
-	inline static ValueType ChooseByColumn(Matrix<ValueType>& m, LinAlEntity<ValueType>& ext, size_t iter) noexcept {
-		ValueType max_elem = fabs(m.data[iter][iter]);
+	template<typename T> //TODO: optimize
+	static void GaussLDLT(Matrix<T>& m) noexcept {
+		for (size_t iter = 0; iter < m.size_ - 1; iter++) {
+			// Add current row to all under it
+			for (size_t i = iter + 1; i < m.size_; i++) {
+
+				T multiplier = -m.data[i][iter] / m.data[iter][iter];
+				for (size_t j = iter; j < m.size_; j++) {
+					m.data[i][j] += m.data[iter][j] * multiplier;
+					//m.data[j][i] = m.data[i][j];
+				}
+			}
+		}
+	}
+
+	template<typename T>
+	static std::vector<size_t> GaussLU(Matrix<T>& lu) noexcept {
+		std::vector<size_t> permut;
+		permut.reserve(lu.size_);
+		for (size_t i = 0; i < lu.size_; i++) {
+			permut.push_back(i);
+		}
+
+		for (size_t iter = 0; iter < lu.size_ - 1; iter++) {
+			auto max_index = ChooseByColumn(lu, (Vector<T>*)nullptr, iter);
+			// Change rows in P
+			if (max_index != iter) {
+				std::swap(permut[iter], permut[max_index]);
+			}
+
+			// Add current row to all under it
+			for (size_t i = iter + 1; i < lu.size_; i++) {
+
+				T multiplier = -lu.data[i][iter] / lu.data[iter][iter];
+				for (size_t j = iter; j < lu.size_; j++) {
+					lu.data[i][j] += lu.data[iter][j] * multiplier;
+				}
+				lu[i][iter] = -multiplier;
+			}
+		}
+		return permut;
+	}
+
+	template<template<class> typename LinAl, typename T>
+	inline static T ChooseByColumn(Matrix<T>& m, LinAl<T>* ext, size_t iter) noexcept {
+		T max_elem = fabs(m.data[iter][iter]);
 		size_t max_index = iter;
 		for (size_t i = iter; i < m.size_; i++) {
-			if (fabs(m.data[i][iter]) > max_elem) {
+			if (std::abs(m.data[i][iter]) > max_elem) {
 				max_elem = fabs(m.data[i][iter]);
 				max_index = i;
 			}
@@ -157,17 +310,18 @@ private:
 
 		if (max_elem > 0) {
 			// Change current row and row with max element
-			m.ChangeRow(iter, max_index);
-			ext.ChangeRow(iter, max_index);
+			std::swap(m.data[iter], m.data[max_index]);
+			if (ext) { std::swap(ext->data[iter], ext->data[max_index]); }
 		}
 		return max_index;
 	}
+#pragma endregion 
 
-	template<typename ValueType>
-	static Vector<ValueType> SolveUpperTriangle(Matrix<ValueType>& m, Vector<ValueType>& ext) {
-		Vector<ValueType> answer{ ext.size_ };
+	template<typename T>
+	static Vector<T> SolveUpperTriangle(const Matrix<T>& m, const Vector<T>& ext) {
+		Vector<T> answer{ ext.size_ };
 		for (size_t i = m.size_ - 1; i < SIZE_MAX; i--) {
-			ValueType sum = 0;
+			T sum = 0;
 			for (size_t j = i + 1; j < m.size_; j++) {
 				sum += m.data[i][j] * answer.data[j];
 			}
@@ -176,17 +330,47 @@ private:
 		return answer;
 	}
 
-	template<typename ValueType>
-	static Vector<ValueType> SolveLowerTriangle(Matrix<ValueType>& m, Vector<ValueType>& ext) {
-		Vector<ValueType> answer{ ext.size_ };
+	template<typename T>
+	static Vector<T> SolveLowerTriangle(const Matrix<T>& m, const Vector<T>& ext, bool identity_diag) {
+		Vector<T> answer{ ext.size_ };
 		for (size_t i = 0; i < m.size_; i++) {
-			ValueType sum = 0;
+			T sum = 0;
 			for (size_t j = i - 1; j < SIZE_MAX; j--) {
 				sum += m.data[i][j] * answer.data[j];
 			}
-			answer.data[i] = (-sum + ext.data[i]) / m.data[i][i];
+
+			answer.data[i] = (-sum + ext.data[i]);
+			if (!identity_diag) {
+				answer.data[i] /= m.data[i][i];
+			}
 		}
 		return answer;
+	}
+
+	template<typename T>
+	static void permutation(Vector<T>& A, std::vector<size_t> P) {
+		// For each element of P
+		size_t n = P.size();
+		for (int i = 0; i < n; i++) {
+			int next = i;
+
+			// Check if it is already
+			// considered in cycle
+			while (P[next] != SIZE_MAX) {
+
+				// Swap the current element according
+				// to the permutation in P
+				std::swap(A(i), A(P[next]));
+				int temp = P[next];
+
+				// Subtract n from an entry in P
+				// to make it negative which indicates
+				// the corresponding move
+				// has been performed
+				P[next] = SIZE_MAX;
+				next = temp;
+			}
+		}
 	}
 };
 
