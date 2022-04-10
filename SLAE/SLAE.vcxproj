@@ -143,7 +143,9 @@
     <ClCompile Include="SLAE.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="LinAlEntity.h" />
     <ClInclude Include="matrix.h" />
+    <ClInclude Include="MatrixUtils.h" />
     <ClInclude Include="matrix_generator.h" />
     <ClInclude Include="vector.h" />
   </ItemGroup>
