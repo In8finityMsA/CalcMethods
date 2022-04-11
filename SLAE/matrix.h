@@ -49,7 +49,27 @@ public:
 #pragma endregion
 
 #pragma region arithmetics
-	Matrix<T> operator*(const Matrix<T>& rhs) {
+	Matrix<T> operator+(const Matrix<T>& rhs) const {
+		Matrix<T> out{ size_ };
+		for (size_t i = 0; i < size_; i++) {
+			for (size_t j = 0; j < size_; j++) {
+				out.data[i][j] = data[i][j] + rhs.data[i][j];
+			}
+		}
+		return out;
+	}
+
+	Matrix<T> operator-(const Matrix<T>& rhs) const {
+		Matrix<T> out{ size_ };
+		for (size_t i = 0; i < size_; i++) {
+			for (size_t j = 0; j < size_; j++) {
+				out.data[i][j] = data[i][j] - rhs.data[i][j];
+			}
+		}
+		return out;
+	}
+
+	Matrix<T> operator*(const Matrix<T>& rhs) const {
 		Matrix<T> out{size_};
 		for (size_t i = 0; i < size_; i++) {
 			for (size_t j = 0; j < size_; j++) {
@@ -61,7 +81,7 @@ public:
 		return out;
 	}
 
-	Vector<T> operator*(const Vector<T>& rhs) {
+	Vector<T> operator*(const Vector<T>& rhs) const {
 		Vector<T> out{ size_ };
 		for (size_t i = 0; i < size_; i++) {
 			for (size_t k = 0; k < size_; k++) {
@@ -97,6 +117,18 @@ public:
 			T sum = 0;
 			for (size_t j = 0; j < size_; j++) {
 				sum += std::abs(data[i][j]);
+			}
+			norm = sum > norm ? sum : norm;
+		}
+		return norm;
+	}
+
+	T OctahedronNorm() {
+		T norm = 0;
+		for (size_t i = 0; i < size_; i++) {
+			T sum = 0;
+			for (size_t j = 0; j < size_; j++) {
+				sum += std::abs(data[j][i]);
 			}
 			norm = sum > norm ? sum : norm;
 		}

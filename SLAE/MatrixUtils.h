@@ -91,7 +91,7 @@ public:
 
 #pragma region decomposition
 	template<typename T>
-	static LUP_Dense<T> DecompositionLU(Matrix<T> a) {
+	static LUP_Dense<T> DecompositionLUP(Matrix<T> a) {
 		auto p = GaussLU(a);
 		return { a, p };
 	}
@@ -109,7 +109,6 @@ public:
 			}
 		}
 
-		size_t temp, temp_index;
 		for (size_t i = 0; i < s; i++) {
 			lup.P.data[i][dense.p[i]] = 1;
 		}
@@ -119,8 +118,6 @@ public:
 	template<typename T>
 	static LDLT_Dense<T> DecompositionLDLT(Matrix<T> a) {
 		GaussLDLT(a);
-		/*std::cout << "Gauss1 mat" << std::endl;
-		a.print();*/
 
 		size_t s = a.size_;
 		std::vector<int> d(s, 1);
@@ -142,8 +139,27 @@ public:
 	template<typename T>
 	static LDLT_Dense<T> DecompositionLDLT2(Matrix<T> a) {
 		GaussLDLT2(a);
-		/*std::cout << "Gauss2 mat" << std::endl;
-		a.print();*/
+
+		size_t s = a.size_;
+		std::vector<int> d(s, 1);
+		for (size_t i = 0; i < s; i++) {
+			T divisor = sqrt(fabs(a[i][i]));
+			int sign = a[i][i] >= 0 ? 1 : -1;
+			d[i] = sign;
+
+			a.data[i][i] /= divisor;
+			for (size_t j = i + 1; j < s; j++) {
+				a.data[i][j] /= divisor;
+				a.data[j][i] = a.data[i][j];
+				a.data[i][j] *= sign;
+			}
+		}
+		return { a, d };
+	}
+
+	template<typename T>
+	static LDLT_Dense<T> DecompositionLDLT3(Matrix<T> a) {
+		GaussLDLT3(a);
 
 		size_t s = a.size_;
 		std::vector<int> d(s, 1);
@@ -219,7 +235,7 @@ public:
 	template<typename T>
 	static Matrix<T> Inverse(Matrix<T> m) noexcept {
 		Matrix<T> inv = Matrix<T>::GetIdentity(m.size_);
-		Gauss(m, inv, GaussForm::DIAGONAL, LeadingChoice::COLUMN);
+		GaussInverse(m, inv);
 
 		// Divide by diagonal element to get identity (currently it is just diagonal)
 		for (size_t i = 0; i < m.size_; i++) {
@@ -236,9 +252,14 @@ private:
 #pragma region gauss
 	template<typename T>
 	static void Gauss(Matrix<T>& m, Vector<T>& ext, GaussForm gf, LeadingChoice lc) noexcept {
-		for (size_t iter = 0; iter < m.size_ - 1; iter++) {
+		for (size_t iter = 0; iter < m.size_; iter++) {
 			if (lc == LeadingChoice::COLUMN) {
-				ChooseByColumn(m, &ext, iter);
+				auto max_index = ChooseByColumn(m, iter);
+				if (max_index != iter) {
+					// Change current row and row with max element
+					std::swap(m.data[iter], m.data[max_index]);
+					std::swap(ext.data[iter], ext.data[max_index]);
+				}
 			}
 			// If making diagonal we need to add row to all the other rows. If triangle - only to rows under current
 			size_t i = gf == GaussForm::DIAGONAL ? 0 : iter + 1; 
@@ -247,7 +268,7 @@ private:
 				if (i == iter) continue;
 
 				T multiplier = -m.data[i][iter] / m.data[iter][iter];
-				ext.data[i] = ext.data[iter] * multiplier;
+				ext.data[i] += ext.data[iter] * multiplier;
 				for (size_t j = iter; j < m.size_; j++) {
 					m.data[i][j] += m.data[iter][j] * multiplier;
 				}
@@ -256,21 +277,18 @@ private:
 	}
 
 	template<typename T>
-	static void Gauss(Matrix<T>& m, Matrix<T>& ext, GaussForm gf, LeadingChoice lc) noexcept {
-		for (size_t iter = 0; iter < m.size_ - 1; iter++) {
-			if (lc == LeadingChoice::COLUMN) {
-				ChooseByColumn(m, &ext, iter);
-			}
-			// If making diagonal we need to add row to all the other rows. If triangle - only to rows under current
-			size_t i = gf == GaussForm::DIAGONAL ? 0 : iter + 1;
+	static void GaussInverse(Matrix<T>& m, Matrix<T>& ext) noexcept {
+		for (size_t iter = 0; iter < m.size_; iter++) {
 			// Add current row to all under it
-			for (; i < m.size_; i++) {
+			for (size_t i = 0; i < m.size_; i++) {
 				if (i == iter) continue;
 
 				T multiplier = -m.data[i][iter] / m.data[iter][iter];
+				// Modify all row's elements in extended matrix
 				for (size_t j = 0; j < iter; j++) {
 					ext.data[i][j] += ext.data[iter][j] * multiplier;
 				}
+				// Modify elements only after iter to avoid multiplication by zero for optimization
 				for (size_t j = iter; j < m.size_; j++) {
 					ext.data[i][j] += ext.data[iter][j] * multiplier;
 					m.data[i][j] += m.data[iter][j] * multiplier;
@@ -279,7 +297,7 @@ private:
 		}
 	}
 
-	template<typename T> //TODO: optimize
+	template<typename T> // Full gauss
 	static void GaussLDLT(Matrix<T>& m) noexcept {
 		for (size_t iter = 0; iter < m.size_ - 1; iter++) {
 			// Add current row to all under it
@@ -287,14 +305,27 @@ private:
 				T multiplier = -m.data[i][iter] / m.data[iter][iter];
 				for (size_t j = iter; j < m.size_; j++) {
 					m.data[i][j] += m.data[iter][j] * multiplier;
-					//m.data[j][i] = m.data[i][j];
 				}
 			}
 		}
 	}
 
-	template<typename T> //TODO: optimize
+	template<typename T> // Storing in upper triangle
 	static void GaussLDLT2(Matrix<T>& m) noexcept {
+		for (size_t iter = 0; iter < m.size_ - 1; iter++) {
+			// Add current row to all under it
+			for (size_t i = iter + 1; i < m.size_; i++) {
+
+				T multiplier = -m.data[iter][i] / m.data[iter][iter];
+				for (size_t j = iter + 1; j <= i; j++) {
+					m.data[j][i] += m.data[iter][j] * multiplier;
+				}
+			}
+		}
+	}
+
+	template<typename T> // Storing in lower triangle
+	static void GaussLDLT3(Matrix<T>& m) noexcept {
 		for (size_t iter = 0; iter < m.size_ - 1; iter++) {
 			// Add current row to all under it
 			for (size_t i = iter + 1; i < m.size_; i++) {
@@ -302,7 +333,6 @@ private:
 				T multiplier = -m.data[i][iter] / m.data[iter][iter];
 				for (size_t j = iter + 1; j <= i; j++) {
 					m.data[i][j] += m.data[j][iter] * multiplier;
-					//m.data[j][i] = m.data[i][j];
 				}
 			}
 		}
@@ -317,9 +347,11 @@ private:
 		}
 
 		for (size_t iter = 0; iter < lu.size_ - 1; iter++) {
-			auto max_index = ChooseByColumn(lu, (Vector<T>*)nullptr, iter);
-			// Change rows in P
+			auto max_index = ChooseByColumn(lu, iter);
 			if (max_index != iter) {
+				// Change current row and row with max element
+				std::swap(lu.data[iter], lu.data[max_index]);
+				// Change rows in P
 				std::swap(permut[iter], permut[max_index]);
 			}
 
@@ -336,8 +368,8 @@ private:
 		return permut;
 	}
 
-	template<template<class> typename LinAl, typename T>
-	inline static T ChooseByColumn(Matrix<T>& m, LinAl<T>* ext, size_t iter) noexcept {
+	template<typename T>
+	inline static size_t ChooseByColumn(Matrix<T>& m, size_t iter) noexcept {
 		T max_elem = fabs(m.data[iter][iter]);
 		size_t max_index = iter;
 		for (size_t i = iter; i < m.size_; i++) {
@@ -345,12 +377,6 @@ private:
 				max_elem = fabs(m.data[i][iter]);
 				max_index = i;
 			}
-		}
-
-		if (max_elem > 0) {
-			// Change current row and row with max element
-			std::swap(m.data[iter], m.data[max_index]);
-			if (ext) { std::swap(ext->data[iter], ext->data[max_index]); }
 		}
 		return max_index;
 	}
