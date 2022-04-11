@@ -67,7 +67,7 @@ public:
 	template<typename T>
 	static Vector<T> LinearSolveWithLUP(const LUP_Dense<T>& dense, Vector<T> b) {
 		// Permute vector b
-		permutation(b, dense.p);
+		Permutation(b, dense.p);
 		// Pass true to make it ignore diagonal values and use ones instead
 		auto y = SolveLowerTriangle(dense.LU, b, true);
 		return SolveUpperTriangle(dense.LU, y);
@@ -119,6 +119,8 @@ public:
 	template<typename T>
 	static LDLT_Dense<T> DecompositionLDLT(Matrix<T> a) {
 		GaussLDLT(a);
+		/*std::cout << "Gauss1 mat" << std::endl;
+		a.print();*/
 
 		size_t s = a.size_;
 		std::vector<int> d(s, 1);
@@ -135,6 +137,29 @@ public:
 			}
 		}
 		return {a, d};
+	}
+
+	template<typename T>
+	static LDLT_Dense<T> DecompositionLDLT2(Matrix<T> a) {
+		GaussLDLT2(a);
+		/*std::cout << "Gauss2 mat" << std::endl;
+		a.print();*/
+
+		size_t s = a.size_;
+		std::vector<int> d(s, 1);
+		for (size_t i = 0; i < s; i++) {
+			T divisor = sqrt(fabs(a[i][i]));
+			int sign = a[i][i] >= 0 ? 1 : -1;
+			d[i] = sign;
+
+			a.data[i][i] /= divisor;
+			for (size_t j = i + 1; j < s; j++) {
+				a.data[j][i] /= divisor;
+				a.data[i][j] = a.data[j][i];
+				a.data[i][j] *= sign;
+			}
+		}
+		return { a, d };
 	}
 
 	template<typename T>
@@ -259,10 +284,24 @@ private:
 		for (size_t iter = 0; iter < m.size_ - 1; iter++) {
 			// Add current row to all under it
 			for (size_t i = iter + 1; i < m.size_; i++) {
-
 				T multiplier = -m.data[i][iter] / m.data[iter][iter];
 				for (size_t j = iter; j < m.size_; j++) {
 					m.data[i][j] += m.data[iter][j] * multiplier;
+					//m.data[j][i] = m.data[i][j];
+				}
+			}
+		}
+	}
+
+	template<typename T> //TODO: optimize
+	static void GaussLDLT2(Matrix<T>& m) noexcept {
+		for (size_t iter = 0; iter < m.size_ - 1; iter++) {
+			// Add current row to all under it
+			for (size_t i = iter + 1; i < m.size_; i++) {
+
+				T multiplier = -m.data[i][iter] / m.data[iter][iter];
+				for (size_t j = iter + 1; j <= i; j++) {
+					m.data[i][j] += m.data[j][iter] * multiplier;
 					//m.data[j][i] = m.data[i][j];
 				}
 			}
@@ -348,7 +387,7 @@ private:
 	}
 
 	template<typename T>
-	static void permutation(Vector<T>& A, std::vector<size_t> P) {
+	static void Permutation(Vector<T>& A, std::vector<size_t> P) {
 		// For each element of P
 		size_t n = P.size();
 		for (int i = 0; i < n; i++) {

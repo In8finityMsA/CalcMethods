@@ -85,7 +85,8 @@ int main()
 
     std::cout << "\n**Before LDLT mat A:\n";
     mat.print();
-    auto ldlt_dense = MatrixUtils::DecompositionLDLT(mat);
+    auto ldlt1_dense = MatrixUtils::DecompositionLDLT(mat);
+    auto ldlt_dense = MatrixUtils::DecompositionLDLT2(mat);
     auto ldlt = MatrixUtils::UndenseLDLT(ldlt_dense);
     auto res_ldlt = ldlt.L * ldlt.D * ldlt.LT;
     std::cout << "\n**Mat L:\n";
@@ -99,21 +100,10 @@ int main()
     auto vec_answer_ldlt = MatrixUtils::LinearSolveWithLDLT(ldlt_dense, vec_b);
     vec_answer_ldlt.print();
 
-    Benchmark bench{100};
-    auto big_m = generateRealMatrix(256, VARIANT);
-    auto test_func = std::bind(MatrixUtils::DecompositionLU<double>, big_m);
-    auto test_res = bench.StartBenchmark(test_func);
-    //auto avg = std::accumulate(res.begin(), res.end(), 0, [](Benchmark::) {x.count()})
-    double avg = 0;
-    for (size_t i = 0; i < res.Size(); i++) {
-        avg += test_res[i].count();
-    }
-    avg /= test_res.size();
-    std::cout << "Avg time: " << avg << std::endl;
 
-    auto LU_test = BenchmarkDecomposition(MatrixUtils::DecompositionLU<double>, MatrixUtils::LinearSolveWithLUP<double>, 1000, 256);
+    auto LU_test = BenchmarkDecomposition(MatrixUtils::DecompositionLDLT2<double>, MatrixUtils::LinearSolveWithLDLT<double>, 1000, 256);
     auto LDLT_test = BenchmarkDecomposition(MatrixUtils::DecompositionLDLT<double>, MatrixUtils::LinearSolveWithLDLT<double>, 1000, 256);
-    std::cout << fixed << setprecision(7) << "LU decompose: " << LU_test.first / 1000000.0 <<
+    std::cout << fixed << setprecision(7) << "LDLt2 decompose: " << LU_test.first / 1000000.0 <<
                                     "s, LU solve: " << LU_test.second / 1000000.0 << "s." << endl;
     std::cout << fixed << setprecision(7) << "LDLt decompose: " << LDLT_test.first / 1000000.0 <<
                                     "s, LDLt solve: " << LDLT_test.second / 1000000.0 << "s." << endl;
