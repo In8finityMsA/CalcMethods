@@ -4,11 +4,11 @@
 #include <chrono>
 
 double getLowerBound(int variant) {
-	return -std::exp2(variant / 4);
+	return -std::exp2(variant / 4.0);
 }
 
 double getUpperBound(int variant) {
-	return std::exp2(variant / 4);
+	return std::exp2(variant / 4.0);
 }
 
 Matrix<double> generateRealMatrix(size_t size, int variant, unsigned int seed) {

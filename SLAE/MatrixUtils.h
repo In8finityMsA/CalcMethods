@@ -128,48 +128,6 @@ public:
 
 			a.data[i][i] /= divisor;
 			for (size_t j = i + 1; j < s; j++) {
-				a.data[i][j] /= divisor;
-				a.data[j][i] = a.data[i][j];
-				a.data[i][j] *= sign;
-			}
-		}
-		return {a, d};
-	}
-
-	template<typename T>
-	static LDLT_Dense<T> DecompositionLDLT2(Matrix<T> a) {
-		GaussLDLT2(a);
-
-		size_t s = a.size_;
-		std::vector<int> d(s, 1);
-		for (size_t i = 0; i < s; i++) {
-			T divisor = sqrt(fabs(a[i][i]));
-			int sign = a[i][i] >= 0 ? 1 : -1;
-			d[i] = sign;
-
-			a.data[i][i] /= divisor;
-			for (size_t j = i + 1; j < s; j++) {
-				a.data[i][j] /= divisor;
-				a.data[j][i] = a.data[i][j];
-				a.data[i][j] *= sign;
-			}
-		}
-		return { a, d };
-	}
-
-	template<typename T>
-	static LDLT_Dense<T> DecompositionLDLT3(Matrix<T> a) {
-		GaussLDLT3(a);
-
-		size_t s = a.size_;
-		std::vector<int> d(s, 1);
-		for (size_t i = 0; i < s; i++) {
-			T divisor = sqrt(fabs(a[i][i]));
-			int sign = a[i][i] >= 0 ? 1 : -1;
-			d[i] = sign;
-
-			a.data[i][i] /= divisor;
-			for (size_t j = i + 1; j < s; j++) {
 				a.data[j][i] /= divisor;
 				a.data[i][j] = a.data[j][i];
 				a.data[i][j] *= sign;
@@ -217,7 +175,6 @@ public:
 		Vector<T> x_prev{ s };
 		int iter = 1;
 		do {
-			std::cout << "Iteration: " << iter++ << std::endl;
 			x_prev = x_cur;
 			for (size_t i = 0; i < s; i++) {
 				T new_coord = b.data[i];
@@ -227,7 +184,7 @@ public:
 				new_coord *= relax_param;
 				x_cur.data[i] = new_coord + (1 - relax_param) * x_cur.data[i];
 			}
-		} while (((x_cur - x_prev).QuadraticNorm() >= eps));
+		} while (((x_cur - x_prev).CubicNorm() >= eps));
 		return x_cur;
 	}
 #pragma endregion
@@ -297,35 +254,8 @@ private:
 		}
 	}
 
-	template<typename T> // Full gauss
-	static void GaussLDLT(Matrix<T>& m) noexcept {
-		for (size_t iter = 0; iter < m.size_ - 1; iter++) {
-			// Add current row to all under it
-			for (size_t i = iter + 1; i < m.size_; i++) {
-				T multiplier = -m.data[i][iter] / m.data[iter][iter];
-				for (size_t j = iter; j < m.size_; j++) {
-					m.data[i][j] += m.data[iter][j] * multiplier;
-				}
-			}
-		}
-	}
-
-	template<typename T> // Storing in upper triangle
-	static void GaussLDLT2(Matrix<T>& m) noexcept {
-		for (size_t iter = 0; iter < m.size_ - 1; iter++) {
-			// Add current row to all under it
-			for (size_t i = iter + 1; i < m.size_; i++) {
-
-				T multiplier = -m.data[iter][i] / m.data[iter][iter];
-				for (size_t j = iter + 1; j <= i; j++) {
-					m.data[j][i] += m.data[iter][j] * multiplier;
-				}
-			}
-		}
-	}
-
 	template<typename T> // Storing in lower triangle
-	static void GaussLDLT3(Matrix<T>& m) noexcept {
+	static void GaussLDLT(Matrix<T>& m) noexcept {
 		for (size_t iter = 0; iter < m.size_ - 1; iter++) {
 			// Add current row to all under it
 			for (size_t i = iter + 1; i < m.size_; i++) {

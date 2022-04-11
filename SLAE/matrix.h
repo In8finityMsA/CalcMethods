@@ -1,10 +1,10 @@
 #pragma once
 #include <stdlib.h>
 #include <iostream>
-#include <new>
 #include <cstring>
 #include <iomanip>
-//#include <algorithm>
+#include <cmath>
+#include <vector>
 #include <cmath>
 #include "vector.h"
 #include "LinAlEntity.h"
@@ -21,6 +21,15 @@ public:
 
 	Matrix(size_t size) : size_(size) {
 		AllocateMemory(size);
+	}
+
+	Matrix(std::vector<std::vector<T>> vec) : size_(vec.size()) {
+		AllocateMemory(size_);
+		for (size_t i = 0; i < size_; i++) {
+			for (size_t j = 0; j < size_; j++) {
+				data[i][j] = vec[i][j];
+			}
+		}
 	}
 
 	Matrix(const Matrix& matrix) {
@@ -102,7 +111,7 @@ public:
 	Matrix<T> GetTranspose() const {
 		Matrix<T> t{ size_ };
 		for (size_t i = 0; i < size_; i++) {
-			for (size_t j = i; j < size_; j++) {
+			for (size_t j = 0; j < size_; j++) {
 				t.data[j][i] = data[i][j];
 			}
 		}
@@ -111,14 +120,14 @@ public:
 #pragma endregion
 
 #pragma region norms
-	T QuadraticNorm() {
+	T CubicNorm() {
 		T norm = 0;
 		for (size_t i = 0; i < size_; i++) {
 			T sum = 0;
 			for (size_t j = 0; j < size_; j++) {
 				sum += std::abs(data[i][j]);
 			}
-			norm = sum > norm ? sum : norm;
+			norm = std::max(norm, sum);
 		}
 		return norm;
 	}
@@ -130,26 +139,10 @@ public:
 			for (size_t j = 0; j < size_; j++) {
 				sum += std::abs(data[j][i]);
 			}
-			norm = sum > norm ? sum : norm;
+			norm = std::max(norm, sum);
 		}
 		return norm;
 	}
-#pragma endregion
-
-#pragma region algo
-	/*void ChangeRow(size_t first, size_t second) override {
-		std::swap(data[first], data[second]);
-	}
-	void MultiplyRow(size_t row, T value) override {
-		for (size_t j = 0; j < size_; j++) {
-			data[row][j] *= value;
-		}
-	}
-	void AddRowMultiplied(size_t first, size_t second, T value) override {
-		for (size_t j = 0; j < size_; j++) {
-			data[second][j] += data[first][j] * value;
-		}
-	}*/
 #pragma endregion
 
 #pragma region getters
@@ -186,8 +179,7 @@ public:
 	void print() const {
 		for (size_t i = 0; i < size_; i++) {
 			for (size_t j = 0; j < size_; j++) {
-				/*std::cout << std::setw(6) << std::setprecision(3) << (data[i][j] > epsilon ? data[i][j] : 0) << "  ";*/
-				std::cout << std::setw(6) << std::setprecision(3) << (fabs(data[i][j]) > epsilon ? data[i][j] : 0) << "  ";
+				std::cout << std::setw(6) <<  std::setprecision(3) << (fabs(data[i][j]) > epsilon ? data[i][j] : 0) << "  ";
 			}
 			std::cout << std::endl;
 		}
@@ -234,9 +226,5 @@ private:
 		}
 	}
 #pragma endregion
-
-#pragma region algo_helpers
-
-#pragma endregion 
 };
 

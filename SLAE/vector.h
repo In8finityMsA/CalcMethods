@@ -75,7 +75,7 @@ public:
 #pragma endregion
 
 #pragma region norms
-	T QuadraticNorm() const {
+	T CubicNorm() const {
 		T norm = 0;
 		for (size_t i = 0; i < size_; i++) {
 			norm = std::abs(data[i]) > norm ? std::abs(data[i]) : norm;
@@ -104,18 +104,6 @@ public:
 	const T& operator()(int index) const {
 		return data[index];
 	}
-#pragma endregion
-
-#pragma region algo
-	/*void ChangeRow(size_t first, size_t second) override {
-		std::swap(data[first], data[second]);
-	}
-	void MultiplyRow(size_t row, T value) override {
-		data[row] *= value;
-	}
-	void AddRowMultiplied(size_t first, size_t second, T value) override {
-		data[second] += data[first] * value;
-	}*/
 #pragma endregion
 
 #pragma region presentation
