@@ -16,6 +16,13 @@ struct BenchResult {
     double max_delta = 0;
 };
 
+struct RelaxBenchResult {
+    BenchResult br;
+    size_t min_iters = SIZE_MAX;
+    double avg_iters = 0;
+    size_t max_iters = 0;
+};
+
 template<typename Dec, typename Solv>
 BenchResult BenchmarkDecomposition(Dec decompose, Solv lin_solve, size_t times_repeat, size_t size) {
     BenchResult perf;
@@ -52,6 +59,6 @@ BenchResult BenchmarkDecomposition(Dec decompose, Solv lin_solve, size_t times_r
 
 BenchResult BenchmarkInverse(size_t times_repeat, size_t size);
 
-BenchResult BenchmarkRelax(double relax_param, size_t times_repeat, size_t size);
+RelaxBenchResult BenchmarkRelax(double relax_param, size_t times_repeat, size_t size);
 
 BenchResult BenchmarkGauss(size_t times_repeat, size_t size);

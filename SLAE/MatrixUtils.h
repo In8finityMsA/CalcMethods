@@ -67,7 +67,8 @@ public:
 	template<typename T>
 	static Vector<T> LinearSolveWithLUP(const LUP_Dense<T>& dense, Vector<T> b) {
 		// Permute vector b
-		Permutation(b, dense.p);
+		auto p = TransposeP(dense.p);
+		Permutation(b, p);
 		// Pass true to make it ignore diagonal values and use ones instead
 		auto y = SolveLowerTriangle(dense.LU, b, true);
 		return SolveUpperTriangle(dense.LU, y);
@@ -155,8 +156,14 @@ public:
 #pragma endregion
 
 #pragma region iterations
+	template <typename T>
+	struct RelaxResult {
+		Vector<T> answer;
+		std::vector<T> deltas;
+	};
+
 	template<typename T>
-	static Vector<T> Relaxation(Matrix<T> m, Vector<T> b, T relax_param, T eps) noexcept {
+	static RelaxResult<T> Relaxation(Matrix<T> m, Vector<T> b, T relax_param, T eps) noexcept {
 		// Make matrix B = E - DA and vector g = Db
 		size_t s = m.size_;
 		for (size_t i = 0; i < s; i++) {
@@ -169,6 +176,7 @@ public:
 		}
 
 		Vector<T> x_cur{ s };
+		std::vector<T> deltas;
 		for (size_t i = 0; i < s; i++) {
 			x_cur.data[i] = 1;
 		}
@@ -184,8 +192,9 @@ public:
 				new_coord *= relax_param;
 				x_cur.data[i] = new_coord + (1 - relax_param) * x_cur.data[i];
 			}
-		} while (((x_cur - x_prev).CubicNorm() >= eps));
-		return x_cur;
+			deltas.push_back((x_cur - x_prev).CubicNorm());
+		} while (deltas.back() >= eps);
+		return { x_cur , deltas };
 	}
 #pragma endregion
 
@@ -344,28 +353,26 @@ private:
 
 	template<typename T>
 	static void Permutation(Vector<T>& A, std::vector<size_t> P) {
-		// For each element of P
 		size_t n = P.size();
 		for (int i = 0; i < n; i++) {
 			int next = i;
 
-			// Check if it is already
-			// considered in cycle
 			while (P[next] != SIZE_MAX) {
-
-				// Swap the current element according
-				// to the permutation in P
 				std::swap(A(i), A(P[next]));
 				int temp = P[next];
 
-				// Subtract n from an entry in P
-				// to make it negative which indicates
-				// the corresponding move
-				// has been performed
 				P[next] = SIZE_MAX;
 				next = temp;
 			}
 		}
+	}
+
+	static std::vector<size_t> TransposeP(const std::vector<size_t>& P) {
+		std::vector<size_t> Pt(P.size());
+		for (size_t i = 0; i < P.size(); i++) {
+			Pt[P[i]] = i;
+		}
+		return Pt;
 	}
 };
 

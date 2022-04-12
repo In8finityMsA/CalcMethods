@@ -139,11 +139,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="benchmark_matrix.cpp" />
     <ClCompile Include="matrix_generator.cpp" />
     <ClCompile Include="SLAE.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Benchmark.h" />
+    <ClInclude Include="benchmark_matrix.h" />
+    <ClInclude Include="constants.h" />
     <ClInclude Include="LinAlEntity.h" />
     <ClInclude Include="matrix.h" />
     <ClInclude Include="MatrixUtils.h" />
