@@ -165,6 +165,7 @@ int main()
     Matrix<double> mat3 = generateRealMatrix(3, N);
     PerformMethods(mat1, 1.0 - N / 40.0);
     PerformMethods(mat2, 1.0 - N / 40.0);
+    PerformMethods(mat3, 1.0 - N / 40.0);
 
 
     std::cout << "\n---------Conditions--------" << endl;
@@ -214,7 +215,7 @@ int main()
     
     std::cout << "\n---------Relaxation param test--------" << endl;
     RelaxParamTest(cond_res.max_cond_matrix, { 0.8, 1.0, 1.2 }, 10.0e-15, {"first.txt", "second.txt", "third.txt"});
-    RelaxParamTest(mat2, { 0.8, 1.0, 1.2 }, 10.0e-6, { "first.txt", "second.txt", "third.txt" });
+    RelaxParamTest(mat2, { 0.8, 1.0, 1.2 }, 10.0e-8, { "first.txt", "second.txt", "third.txt" });
 
     return 0;
 };
