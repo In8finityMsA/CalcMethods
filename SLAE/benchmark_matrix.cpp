@@ -1,4 +1,5 @@
 #include "benchmark_matrix.h"
+#include "linear_solve.h"
 
 BenchResult BenchmarkInverse(size_t times_repeat, size_t size) {
     BenchResult perf{};
@@ -71,7 +72,7 @@ BenchResult BenchmarkGauss(size_t times_repeat, size_t size) {
         auto vec_b = m * vec_x;
 
         auto start = std::chrono::high_resolution_clock::now();
-        auto res = MatrixUtils::LinearSolve(m, vec_b);
+        auto res = LinearSolve::SolveGauss(m, vec_b);
         auto end = std::chrono::high_resolution_clock::now();
         perf.time1 += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 

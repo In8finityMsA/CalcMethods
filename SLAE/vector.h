@@ -4,12 +4,16 @@
 #include <iostream>
 #include <new>
 #include <cstring>
+#include <iomanip>
 
 template <typename T>
 class Vector {
 	template<typename T>
 	friend class Matrix;
 	friend class MatrixUtils;
+	friend class GaussHelper;
+	friend class LinearSolve;
+	friend class Decompositions;
 
 public:
 #pragma region ctor/dtor

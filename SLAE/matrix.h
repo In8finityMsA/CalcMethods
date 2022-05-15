@@ -9,11 +9,15 @@
 #include "vector.h"
 #include "LinAlEntity.h"
 
-#define epsilon 10e-15
+constexpr double epsilon = 10e-15;
 
 template <typename T>
 class Matrix {
 	friend class MatrixUtils;
+	friend class GaussHelper;
+	friend class LinearSolve;
+	friend class Decompositions;
+	friend class EigenValues;
 
 public:
 #pragma region ctr/dtr
@@ -118,6 +122,30 @@ public:
 		return t;
 	}
 #pragma endregion
+
+#pragma region gauss
+	void AddColumnsMultiplied(size_t from, size_t to, double mult) noexcept {
+		for (int j = 0; j < size_; j++) {
+			data[j][to] += data[j][from] * mult;
+		}
+	}
+
+	void AddRowsMultiplied(size_t from, size_t to, double mult) noexcept {
+		for (int j = 0; j < size_; j++) {
+			data[to][j] += data[from][j] * mult;
+		}
+	}
+
+	void ChangeColumns(size_t first, size_t second) noexcept {
+		for (int j = 0; j < size_; j++) {
+			std::swap(data[j][first], data[j][second]);
+		}
+	}
+
+	void ChangeRows(size_t first, size_t second) noexcept {
+		std::swap(data[first], data[second]);
+	}
+#pragma endregion 
 
 #pragma region norms
 	T CubicNorm() {

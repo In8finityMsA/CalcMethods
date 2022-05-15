@@ -9,6 +9,8 @@
 #include <functional>
 #include "constants.h"
 #include <fstream>
+#include "matrix_decompositions.h"
+#include "linear_solve.h"
 
 #define MUSEC_TO_SEC(microseconds) microseconds / 1000000.0\
 
@@ -55,7 +57,7 @@ std::vector<std::pair<double, double>> ChangeVectorB(const Matrix<double>& mat, 
             changed_b(j) += 4*(i + 1.0);
 
         }  
-        auto changed_x = MatrixUtils::LinearSolve(mat, changed_b);
+        auto changed_x = LinearSolve::SolveGauss(mat, changed_b);
 
         deltas.push_back({ (changed_x - vec_x).CubicNorm() / norm_x , (changed_b - vec_b).CubicNorm() / norm_b });
     }
@@ -96,14 +98,14 @@ void PerformMethods(Matrix<double> mat, double relax_param) {
     vec_b.print();
 
     std::cout << "\n---------GAUSS--------" << endl;
-    auto vec_answer = MatrixUtils::LinearSolve(mat, vec_b);
+    auto vec_answer = LinearSolve::SolveGauss(mat, vec_b);
     vec_answer.print();
 
     std::cout << "\n---------LUP--------" << endl;
     std::cout << "Before LU mat A:\n";
     mat.print();
-    auto lup_dense = MatrixUtils::DecompositionLUP(mat);
-    auto lup = MatrixUtils::UndenseLUP(lup_dense);
+    auto lup_dense = Decompositions::GetLUP(mat);
+    auto lup = Decompositions::UndenseLUP(lup_dense);
     auto res = lup.P * lup.L * lup.U;
     std::cout << "\n**Mat P:\n";
     lup.P.print();
@@ -114,14 +116,14 @@ void PerformMethods(Matrix<double> mat, double relax_param) {
     std::cout << "\n**LU mat A:\n";
     res.print();
     std::cout << "\nAnswer x:\n";
-    auto vec_answer_lu = MatrixUtils::LinearSolveWithLUP(lup_dense, vec_b);
+    auto vec_answer_lu = LinearSolve::SolveWithLUP(lup_dense, vec_b);
     vec_answer_lu.print();
 
     std::cout << "\n---------LDLT--------" << endl;
     std::cout << "**Before LDLT mat A:\n";
     mat.print();
-    auto ldlt_dense = MatrixUtils::DecompositionLDLT(mat);
-    auto ldlt = MatrixUtils::UndenseLDLT(ldlt_dense);
+    auto ldlt_dense = Decompositions::GetLDLT(mat);
+    auto ldlt = Decompositions::UndenseLDLT(ldlt_dense);
     auto res_ldlt = ldlt.L * ldlt.D * ldlt.LT;
     std::cout << "\n**Mat L:\n";
     ldlt.L.print();
@@ -132,7 +134,7 @@ void PerformMethods(Matrix<double> mat, double relax_param) {
     std::cout << "\n**LDLT mat A:\n";
     res_ldlt.print();
     std::cout << "\nAnswer x:\n";
-    auto vec_answer_ldlt = MatrixUtils::LinearSolveWithLDLT(ldlt_dense, vec_b);
+    auto vec_answer_ldlt = LinearSolve::SolveWithLDLT(ldlt_dense, vec_b);
     vec_answer_ldlt.print();
 
     std::cout << "\n---------Relax--------" << endl;
@@ -141,7 +143,7 @@ void PerformMethods(Matrix<double> mat, double relax_param) {
     vec_relax.answer.print();
 }
 
-int main()
+int SLAE()
 {
     std::vector<std::vector<double>> A1_ = { {pow(N, 2) + 15, N - 1, -1, -2},
                                             {N - 1, -15 - pow(N, 2), -N + 4, -4},
@@ -188,8 +190,8 @@ int main()
     cout << defaultfloat << "Min norm: " << Relax_test.br.min_delta << ", Avg norm: " << Relax_test.br.avg_delta << ", Max norm: " << Relax_test.br.max_delta << endl;
     cout << defaultfloat << "Min iters: " << Relax_test.min_iters << ", Avg iters: " << Relax_test.avg_iters << ", Max iters: " << Relax_test.max_iters << endl << endl;
 
-    auto LUP_test = BenchmarkDecomposition(MatrixUtils::DecompositionLUP<double>, MatrixUtils::LinearSolveWithLUP<double>, TEST_COUNT, TEST_SIZE);
-    auto LDLT_test = BenchmarkDecomposition(MatrixUtils::DecompositionLDLT<double>, MatrixUtils::LinearSolveWithLDLT<double>, TEST_COUNT, TEST_SIZE);
+    auto LUP_test = BenchmarkDecomposition(Decompositions::GetLUP<double>, LinearSolve::SolveWithLUP<double>, TEST_COUNT, TEST_SIZE);
+    auto LDLT_test = BenchmarkDecomposition(Decompositions::GetLDLT<double>, LinearSolve::SolveWithLDLT<double>, TEST_COUNT, TEST_SIZE);
     
     std::cout << fixed << setprecision(7) << "LUP decompose: " << MUSEC_TO_SEC(LUP_test.time1) <<
                                           "s, LUP solve: " << MUSEC_TO_SEC(LUP_test.time2) << "s." << endl;
@@ -215,7 +217,7 @@ int main()
     
     std::cout << "\n---------Relaxation param test--------" << endl;
     RelaxParamTest(cond_res.max_cond_matrix, { 0.8, 1.0, 1.2 }, 10.0e-15, {"first.txt", "second.txt", "third.txt"});
-    RelaxParamTest(mat2, { 0.8, 1.0, 1.2 }, 10.0e-8, { "first.txt", "second.txt", "third.txt" });
+    RelaxParamTest(mat2, { 0.8, 1.0, 1.2 }, 10.0e-6, { "first.txt", "second.txt", "third.txt" });
 
     return 0;
 };

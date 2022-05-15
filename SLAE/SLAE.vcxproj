@@ -140,6 +140,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="benchmark_matrix.cpp" />
+    <ClCompile Include="main.cpp" />
     <ClCompile Include="matrix_generator.cpp" />
     <ClCompile Include="SLAE.cpp" />
   </ItemGroup>
@@ -147,10 +148,15 @@
     <ClInclude Include="Benchmark.h" />
     <ClInclude Include="benchmark_matrix.h" />
     <ClInclude Include="constants.h" />
+    <ClInclude Include="eigen_values.h" />
+    <ClInclude Include="gauss_helper.h" />
     <ClInclude Include="LinAlEntity.h" />
+    <ClInclude Include="linear_solve.h" />
     <ClInclude Include="matrix.h" />
+    <ClInclude Include="matrix_decompositions.h" />
     <ClInclude Include="MatrixUtils.h" />
     <ClInclude Include="matrix_generator.h" />
+    <ClInclude Include="non_linear_solve.h" />
     <ClInclude Include="vector.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
