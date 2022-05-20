@@ -23,7 +23,7 @@ public:
 #pragma region ctr/dtr
 	Matrix() noexcept {}
 
-	Matrix(size_t size) : size_(size) {
+	explicit Matrix(size_t size) : size_(size) {
 		AllocateMemory(size);
 	}
 

@@ -5,6 +5,7 @@
 #include <new>
 #include <cstring>
 #include <iomanip>
+#include <vector>
 
 template <typename T>
 class Vector {
@@ -14,11 +15,19 @@ class Vector {
 	friend class GaussHelper;
 	friend class LinearSolve;
 	friend class Decompositions;
+	friend class EigenValues;
 
 public:
 #pragma region ctor/dtor
-	Vector(size_t size) : size_(size) {
+	explicit Vector(size_t size) : size_(size) {
 		AllocateMemory(size);
+	}
+
+	Vector(std::vector<T> vec) : size_(vec.size()) {
+		AllocateMemory(size_);
+		for (size_t i = 0; i < size_; i++) {
+			data[i] = vec[i];
+		}
 	}
 
 	Vector(const Vector& vector) {
@@ -76,6 +85,44 @@ public:
 		}
 		return res;
 	}
+
+	Vector<T>& operator *= (T other) {
+		for (size_t i = 0; i < size_; i++) {
+			data[i] *= other;
+		}
+		return *this;
+	}
+
+	Vector<T> operator * (T other) const {
+		Vector<T> res(size_);
+		for (size_t i = 0; i < size_; i++) {
+			res.data[i] = data[i] * other;
+		}
+		return res;
+	}
+
+	Vector<T>& operator /= (T other) {
+		for (size_t i = 0; i < size_; i++) {
+			data[i] /= other;
+		}
+		return *this;
+	}
+
+	Vector<T> operator / (T other) const {
+		Vector<T> res(size_);
+		for (size_t i = 0; i < size_; i++) {
+			res.data[i] = data[i] / other;
+		}
+		return res;
+	}
+
+	double operator * (const Vector<T>& other) const {
+		T res = 0;
+		for (size_t i = 0; i < size_; i++) {
+			res += data[i] * other.data[i];
+		}
+		return res;
+	}
 #pragma endregion
 
 #pragma region norms
@@ -93,6 +140,21 @@ public:
 			norm += std::abs(data[i]);
 		}
 		return norm;
+	}
+
+	size_t NormalizeVector() {
+		T norm = 0;
+		size_t index = 0;
+		for (size_t i = 0; i < size_; i++) {
+			if (std::abs(data[i]) > norm) {
+				norm = std::abs(data[i]);
+				index = i;
+			}
+		}
+		for (size_t i = 0; i < size_; i++) {
+			data[i] /= norm;
+		}
+		return index;
 	}
 #pragma endregion
 

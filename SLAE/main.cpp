@@ -74,9 +74,14 @@ int main() {
 	auto hessenberg2 = MatrixUtils::GetHessenbergForm(mat2);
 	hessenberg2.print();
 
-	auto eig = EigenValues::QRalgorithm(hessenberg1, 1e-15);
+	auto eig = EigenValues::QRalgorithm(hessenberg2, 1e-15);
 	for (size_t i = 0; i < eig.size(); i++) {
 		std::cout << eig[i] << '\n';
 	}
+
+	Matrix<double> mat0(std::vector<std::vector<double>>({ {1,2,3}, {3,2,1}, {2,1,3} }));
+	auto power = EigenValues::PowerMethod(mat2, 1e-10);
+	std::cout << "Eig value: " << power.eig_val << '\n';
+	power.eig_vec.print();
 	return 0;
 }

@@ -6,6 +6,104 @@
 
 class EigenValues {
 public:
+	typedef std::complex<double> Complex;
+
+	template<typename T>
+	struct PowerMethodResult {
+		T eig_val;
+		Vector<T> eig_vec;
+		size_t iterations;
+	};
+
+	
+
+	static PowerMethodResult<double> PowerMethod(Matrix<double> m, double eps) {
+		size_t iteration = 0;
+		const size_t b_size = 4;
+		std::vector<Vector<double>> batch_vec( b_size , Vector<double>{m.size_} );
+		std::vector<size_t> batch_ind( b_size , 0 );
+		for (size_t i = 0; i < m.size_; i++) {
+			batch_vec[0].data[i] = 1 + rand() % 10;
+		}
+		bool isR = true;
+		bool isRModuleDiff = true;
+		bool isC = true;
+		double r = 0;
+		double cos = 0;
+		double sin = 0;
+		double deltaRSame = 0;
+		double deltaRDiff = 0;
+		int counter = 0;
+
+		while (iteration < 20000) {
+			++iteration;
+
+			double eig_val = 0;
+			for (size_t i = 1; i < b_size; i++) {
+				batch_vec[i] = m * batch_vec[i - 1];
+				eig_val = batch_vec[i].data[0] / batch_vec[i - 1].data[0];
+				batch_ind[i] = batch_vec[i].NormalizeVector(); 
+			}
+
+			/*if (isR || isRModuleDiff) {
+				if (isRModuleDiff) {
+					maxEigenPrevR = Math.Sqrt(Math.Abs(y2[firstIndex][0] * InfNorm(y1).Item2 / u[firstIndex][0]));
+					maxEigenR = Math.Sqrt(Math.Abs(y3[secondIndex][0] * InfNorm(y2).Item2 / u1[secondIndex][0]));
+				}
+
+				if (isR) {
+					maxEigenIfRand1Prev = y2[secondIndex][0] / u1[secondIndex][0];
+					maxEigenIfRand1 = y3[index][0] / u2[index][0];
+				}
+
+				deltaRDiff = Math.Abs(maxEigenPrevR - maxEigenR);
+				deltaRSame = Math.Abs(maxEigenIfRand1Prev - maxEigenIfRand1);
+
+				if (deltaRSame < HAS_CONVERGENCE) {
+					isRModuleDiff = false;
+					isC = false;
+				}
+
+				if (deltaRDiff < HAS_CONVERGENCE) {
+					isC = false;
+				}
+
+				if (isR && deltaRSame < ZERO) {
+					timer.Stop();
+					result.a = maxEigenR;
+					result.EigenMaxVectorA1 = u1;
+					result.EigenMaxVectorA2 = null;
+					result.@case = Case.RSameModule;
+					result.Iteration = counter;
+					result.Time = timer.ElapsedTicks;
+
+					break;
+				}
+
+				if (isRModuleDiff && deltaRDiff < ZERO) {
+					timer.Stop();
+					result.a = maxEigenR;
+					result.EigenMaxVectorA1 = Sum(y3, MultiplyByScalar(u2, -maxEigenR));
+					result.EigenMaxVectorA2 = Sum(y3, MultiplyByScalar(u2, -maxEigenR));
+					result.@case = Case.RDiffModule;
+					result.Iteration = counter;
+					result.Time = timer.ElapsedTicks;
+					break;
+				}
+			}*/
+
+
+			auto norm = (batch_vec[b_size - 1] - batch_vec[b_size - 2]).CubicNorm();
+			if (norm < eps) {
+				auto vec = batch_vec[b_size - 1];
+				//auto eig_val = (vec * (m * vec)) / (vec * vec);
+				//auto eig_val = batch_vec[b_size - 1].data[0] / batch_vec[b_size - 2].data[0];
+				return { eig_val, batch_vec[b_size - 1], iteration };
+			}
+			batch_vec[0] = batch_vec[b_size - 1];
+		}
+	}
+
 	static std::vector<std::complex<double>> QRalgorithm(Matrix<double> m, double eps) {
 		size_t size = m.size_;
 		size_t min_zeroes = (size - 1) / 2;
