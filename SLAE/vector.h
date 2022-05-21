@@ -6,6 +6,7 @@
 #include <cstring>
 #include <iomanip>
 #include <vector>
+#include <cmath>
 
 template <typename T>
 class Vector {
@@ -142,7 +143,15 @@ public:
 		return norm;
 	}
 
-	size_t NormalizeVector() {
+	T EuñlideanNorm() const {
+		T norm = 0;
+		for (size_t i = 0; i < size_; i++) {
+			norm += data[i] * data[i];
+		}
+		return sqrt(norm);
+	}
+
+	size_t NormalizeCubic() {
 		T norm = 0;
 		size_t index = 0;
 		for (size_t i = 0; i < size_; i++) {
@@ -155,6 +164,14 @@ public:
 			data[i] /= norm;
 		}
 		return index;
+	}
+
+	T NormalizeEuclidean() {
+		T norm = EuñlideanNorm();
+		for (size_t i = 0; i < size_; i++) {
+			data[i] /= norm;
+		}
+		return norm;
 	}
 #pragma endregion
 

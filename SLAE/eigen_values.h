@@ -15,8 +15,6 @@ public:
 		size_t iterations;
 	};
 
-	
-
 	static PowerMethodResult<double> PowerMethod(Matrix<double> m, double eps) {
 		size_t iteration = 0;
 		const size_t b_size = 4;
@@ -25,82 +23,61 @@ public:
 		for (size_t i = 0; i < m.size_; i++) {
 			batch_vec[0].data[i] = 1 + rand() % 10;
 		}
-		bool isR = true;
-		bool isRModuleDiff = true;
-		bool isC = true;
-		double r = 0;
-		double cos = 0;
-		double sin = 0;
-		double deltaRSame = 0;
-		double deltaRDiff = 0;
-		int counter = 0;
 
+		double eig_val = 0;
 		while (iteration < 20000) {
 			++iteration;
 
-			double eig_val = 0;
 			for (size_t i = 1; i < b_size; i++) {
 				batch_vec[i] = m * batch_vec[i - 1];
 				eig_val = batch_vec[i].data[0] / batch_vec[i - 1].data[0];
-				batch_ind[i] = batch_vec[i].NormalizeVector(); 
+				//batch_ind[i] = batch_vec[i].NormalizeEuclidean(); 
 			}
 
-			/*if (isR || isRModuleDiff) {
-				if (isRModuleDiff) {
-					maxEigenPrevR = Math.Sqrt(Math.Abs(y2[firstIndex][0] * InfNorm(y1).Item2 / u[firstIndex][0]));
-					maxEigenR = Math.Sqrt(Math.Abs(y3[secondIndex][0] * InfNorm(y2).Item2 / u1[secondIndex][0]));
-				}
-
-				if (isR) {
-					maxEigenIfRand1Prev = y2[secondIndex][0] / u1[secondIndex][0];
-					maxEigenIfRand1 = y3[index][0] / u2[index][0];
-				}
-
-				deltaRDiff = Math.Abs(maxEigenPrevR - maxEigenR);
-				deltaRSame = Math.Abs(maxEigenIfRand1Prev - maxEigenIfRand1);
-
-				if (deltaRSame < HAS_CONVERGENCE) {
-					isRModuleDiff = false;
-					isC = false;
-				}
-
-				if (deltaRDiff < HAS_CONVERGENCE) {
-					isC = false;
-				}
-
-				if (isR && deltaRSame < ZERO) {
-					timer.Stop();
-					result.a = maxEigenR;
-					result.EigenMaxVectorA1 = u1;
-					result.EigenMaxVectorA2 = null;
-					result.@case = Case.RSameModule;
-					result.Iteration = counter;
-					result.Time = timer.ElapsedTicks;
-
-					break;
-				}
-
-				if (isRModuleDiff && deltaRDiff < ZERO) {
-					timer.Stop();
-					result.a = maxEigenR;
-					result.EigenMaxVectorA1 = Sum(y3, MultiplyByScalar(u2, -maxEigenR));
-					result.EigenMaxVectorA2 = Sum(y3, MultiplyByScalar(u2, -maxEigenR));
-					result.@case = Case.RDiffModule;
-					result.Iteration = counter;
-					result.Time = timer.ElapsedTicks;
-					break;
-				}
-			}*/
 
 
-			auto norm = (batch_vec[b_size - 1] - batch_vec[b_size - 2]).CubicNorm();
-			if (norm < eps) {
-				auto vec = batch_vec[b_size - 1];
-				//auto eig_val = (vec * (m * vec)) / (vec * vec);
-				//auto eig_val = batch_vec[b_size - 1].data[0] / batch_vec[b_size - 2].data[0];
-				return { eig_val, batch_vec[b_size - 1], iteration };
-			}
+
+			//auto norm = (batch_vec[b_size - 1] - batch_vec[b_size - 2]).CubicNorm();
+			//if (norm < eps) {
+			//	auto vec = batch_vec[b_size - 1];
+			//	//auto eig_val = (vec * (m * vec)) / (vec * vec);
+			//	//auto eig_val = batch_vec[b_size - 1].data[0] / batch_vec[b_size - 2].data[0];
+			//	return { eig_val, batch_vec[b_size - 1], iteration };
+			//}
+			batch_vec[b_size - 1].NormalizeEuclidean();
 			batch_vec[0] = batch_vec[b_size - 1];
+		}
+		return  { eig_val, batch_vec[b_size - 1], iteration };
+	}
+
+	static void ReflectVector(Vector<double>& v, Vector<double>& w, size_t index) {
+		double scalar_mult = 0;
+		for (size_t i = 0; i < w.size_; i++) {
+			scalar_mult += v.data[index + i] * w.data[i];
+		}
+		for (size_t i = 0; i < w.size_; i++) {
+			v.data[index + i] -= 2 * scalar_mult * w.data[i];
+		}
+	}
+
+	static void PowerLinearSquares(Vector<double> u, Vector<double> Au, Vector<double> A2u) {
+		auto norm = u.EuñlideanNorm();
+		Vector<double> w(u);
+		w.data[0] -= norm;
+		w.NormalizeEuclidean(); // w = u - u' / ||u - u'||_2
+		u.data[0] = norm;
+		for (size_t i = 1; i < u.size_; i++) {
+			u.data[i] = 0;
+		}
+		ReflectVector(Au, w, 0);
+
+		auto norm = Au.EuñlideanNorm();
+		Vector<double> w2(Au);
+		w2.data[0] -= norm;
+		w2.NormalizeEuclidean(); // w = u - u' / ||u - u'||_2
+		u.data[0] = norm;
+		for (size_t i = 1; i < u.size_; i++) {
+			u.data[i] = 0;
 		}
 	}
 
