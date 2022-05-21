@@ -1,5 +1,4 @@
 #pragma once
-#include "LinAlEntity.h"
 #include <stdlib.h>
 #include <iostream>
 #include <new>
@@ -7,6 +6,7 @@
 #include <iomanip>
 #include <vector>
 #include <cmath>
+#include <complex>
 
 template <typename T>
 class Vector {
@@ -31,11 +31,23 @@ public:
 		}
 	}
 
-	Vector(const Vector& vector) {
+	Vector(const Vector<T>& vector) {
 		Copy(vector);
 	}
 
-	Vector& operator=(const Vector& vector) {
+	template<typename U>
+	Vector(const Vector<U>& vector) {
+		Copy(vector);
+	}
+
+	Vector<T>& operator=(const Vector<T>& vector) {
+		FreeMemory();
+		Copy(vector);
+		return *this;
+	}
+
+	template<typename U>
+	Vector<T>& operator=(const Vector<U>& vector) {
 		FreeMemory();
 		Copy(vector);
 		return *this;
@@ -87,14 +99,16 @@ public:
 		return res;
 	}
 
-	Vector<T>& operator *= (T other) {
+	template<typename Scalar>
+	Vector<T>& operator *= (Scalar other) {
 		for (size_t i = 0; i < size_; i++) {
 			data[i] *= other;
 		}
 		return *this;
 	}
 
-	Vector<T> operator * (T other) const {
+	template<typename Scalar>
+	Vector<T> operator * (Scalar other) const {
 		Vector<T> res(size_);
 		for (size_t i = 0; i < size_; i++) {
 			res.data[i] = data[i] * other;
@@ -102,14 +116,16 @@ public:
 		return res;
 	}
 
-	Vector<T>& operator /= (T other) {
+	template<typename Scalar>
+	Vector<T>& operator /= (Scalar other) {
 		for (size_t i = 0; i < size_; i++) {
 			data[i] /= other;
 		}
 		return *this;
 	}
 
-	Vector<T> operator / (T other) const {
+	template<typename Scalar>
+	Vector<T> operator / (Scalar other) const {
 		Vector<T> res(size_);
 		for (size_t i = 0; i < size_; i++) {
 			res.data[i] = data[i] / other;
@@ -155,7 +171,7 @@ public:
 		T norm = 0;
 		size_t index = 0;
 		for (size_t i = 0; i < size_; i++) {
-			if (std::abs(data[i]) > norm) {
+			if (std::abs(data[i]) > std::abs(norm)) {
 				norm = std::abs(data[i]);
 				index = i;
 			}
@@ -203,11 +219,21 @@ private:
 
 private:
 #pragma region ctor/dtor helpers
-	void Copy(const Vector& vector) {
+	void Copy(const Vector<T>& vector) {
 		//std::cout << "Copied vector\n";
 		size_ = vector.size_;
 		AllocateMemory(size_);
 		memcpy(data, vector.data, sizeof(T) * size_);
+	}
+
+	template<typename U>
+	void Copy(const Vector<U>& vector) {
+		//std::cout << "Copied vector\n";
+		size_ = vector.Size();
+		AllocateMemory(size_);
+		for (size_t i = 0; i < size_; i++) {
+			data[i] = vector(i);
+		}
 	}
 
 	void Move(Vector&& vector) noexcept {

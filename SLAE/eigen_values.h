@@ -3,6 +3,7 @@
 #include "vector.h"
 #include <complex>
 #include <vector>
+#include <optional>
 
 class EigenValues {
 public:
@@ -11,74 +12,143 @@ public:
 	template<typename T>
 	struct PowerMethodResult {
 		T eig_val;
+		std::optional<T> eig_val2;
 		Vector<T> eig_vec;
+		std::optional<Vector<T>> eig_vec2;
 		size_t iterations;
 	};
 
-	static PowerMethodResult<double> PowerMethod(Matrix<double> m, double eps) {
+	static PowerMethodResult<Complex> PowerMethod(Matrix<double> m, double eps) {
+		eps = std::max(1e-14, eps);
 		size_t iteration = 0;
 		const size_t b_size = 4;
 		std::vector<Vector<double>> batch_vec( b_size , Vector<double>{m.size_} );
 		std::vector<size_t> batch_ind( b_size , 0 );
 		for (size_t i = 0; i < m.size_; i++) {
-			batch_vec[0].data[i] = 1 + rand() % 10;
+			batch_vec[0].data[i] = -5 +rand() % 10;
 		}
 
-		double eig_val = 0;
+		std::pair<Complex, Complex> eig_values{ {},{} };
+		std::pair<Complex, Complex> eig_values_old{ {},{} };
+		std::pair<Complex, Complex> eig_values_old2{ {},{} };
+		bool check_loop = false;
 		while (iteration < 20000) {
 			++iteration;
 
 			for (size_t i = 1; i < b_size; i++) {
 				batch_vec[i] = m * batch_vec[i - 1];
-				eig_val = batch_vec[i].data[0] / batch_vec[i - 1].data[0];
-				//batch_ind[i] = batch_vec[i].NormalizeEuclidean(); 
 			}
 
+			auto coefs = LinearLeastSquares(batch_vec[b_size - 3], batch_vec[b_size - 2], batch_vec[b_size - 1]);
+			eig_values = SolveQuadratic(1, coefs.first, coefs.second);
 
+			double delta1 = abs(abs(eig_values.first) - abs(eig_values_old.first));
+			double delta2 = abs(abs(eig_values.second) - abs(eig_values_old.second));
+			if (delta1 < eps && delta2 < eps) {
+				return PowerResult(eig_values, batch_vec[b_size - 1], batch_vec[b_size - 2], iteration, eps);
+			} else if (delta1 < eps || delta2 < eps) {
+				/*if (!check_loop) {
+					eig_values_old2 = eig_values;
+					check_loop = true;
+				} else {
+					double delta1 = abs(abs(eig_values.first) - abs(eig_values_old2.first));
+					double delta2 = abs(abs(eig_values.second) - abs(eig_values_old2.second));
+					if (delta1 < eps && delta2 < eps) {
+						return PowerResult(eig_values, batch_vec[b_size - 1], batch_vec[b_size - 2], iteration, eps);
+					}
+					eig_values_old2 = eig_values_old;
+				}*/
 
+			}
 
-			//auto norm = (batch_vec[b_size - 1] - batch_vec[b_size - 2]).CubicNorm();
-			//if (norm < eps) {
-			//	auto vec = batch_vec[b_size - 1];
-			//	//auto eig_val = (vec * (m * vec)) / (vec * vec);
-			//	//auto eig_val = batch_vec[b_size - 1].data[0] / batch_vec[b_size - 2].data[0];
-			//	return { eig_val, batch_vec[b_size - 1], iteration };
-			//}
+			eig_values_old = eig_values;
 			batch_vec[b_size - 1].NormalizeEuclidean();
 			batch_vec[0] = batch_vec[b_size - 1];
 		}
-		return  { eig_val, batch_vec[b_size - 1], iteration };
+		return PowerResult(eig_values, batch_vec[b_size - 1], batch_vec[b_size - 2], iteration, eps);
 	}
 
-	static void ReflectVector(Vector<double>& v, Vector<double>& w, size_t index) {
+	static PowerMethodResult<Complex> PowerResult(std::pair<Complex, Complex> eig_values, Vector<double> cur_vector, Vector<double> prev_vector, size_t iterations, double eps) {
+		size_t size = cur_vector.size_;
+		Vector<Complex> eig_vec1{ size };
+		Vector<Complex> eig_vec2{ size };
+
+		if (eig_values.first.imag() != 0 && eig_values.second.imag() != 0) {
+			for (size_t i = 0; i < size; i++) {
+				auto eig_val = eig_values.first;
+				eig_vec1.data[i] = { cur_vector.data[i] - prev_vector.data[i] * eig_values.first.real(), prev_vector.data[i] * eig_values.first.imag() };
+				eig_vec2.data[i] = { cur_vector.data[i] - prev_vector.data[i] * eig_values.second.real(), prev_vector.data[i] * eig_values.second.imag() };
+			}
+			eig_vec1.NormalizeCubic();
+			eig_vec2.NormalizeCubic();
+			return { eig_values.first, eig_values.second, eig_vec1, eig_vec2, iterations };
+
+		} else if (abs(abs(eig_values.first) - abs(eig_values.second)) < 10*eps) {
+			for (size_t i = 0; i < size; i++) {
+				eig_vec1.data[i] = cur_vector.data[i] + eig_values.first * prev_vector.data[i];
+				eig_vec2.data[i] = cur_vector.data[i] + eig_values.second * prev_vector.data[i];
+			}
+			eig_vec1.NormalizeCubic();
+			eig_vec2.NormalizeCubic();
+			return { eig_values.first, eig_values.second, eig_vec1, eig_vec2, iterations };
+		} else {
+			cur_vector.NormalizeCubic();
+			return { eig_values.first, std::nullopt, cur_vector, std::nullopt, iterations };
+		}
+	}
+
+	static void ReflectVector(Vector<double>& v, Vector<double>& w) {
 		double scalar_mult = 0;
 		for (size_t i = 0; i < w.size_; i++) {
-			scalar_mult += v.data[index + i] * w.data[i];
+			scalar_mult += v.data[i] * w.data[i];
 		}
 		for (size_t i = 0; i < w.size_; i++) {
-			v.data[index + i] -= 2 * scalar_mult * w.data[i];
+			v.data[i] -= 2 * scalar_mult * w.data[i];
 		}
 	}
 
-	static void PowerLinearSquares(Vector<double> u, Vector<double> Au, Vector<double> A2u) {
+	static std::pair< Complex, Complex> SolveQuadratic(double a, double b, double c) {
+		double D = b * b - 4 * a * c;
+		double A = 2 * a;
+		if (D < 0) {
+			return { {-b / A, sqrt(-D) / A}, {-b / A, -sqrt(-D) / A } };
+		} else {
+			return { { (-b + sqrt(D)) / A, 0}, { (-b - sqrt(D)) / A, 0 } };
+		}
+	}
+
+	static std::pair<double, double> LinearLeastSquares(Vector<double> u, Vector<double> Au, Vector<double> A2u) {
 		auto norm = u.EuñlideanNorm();
 		Vector<double> w(u);
-		w.data[0] -= norm;
+		w.data[0] -= norm; //copysign(norm, w.data[0]);
 		w.NormalizeEuclidean(); // w = u - u' / ||u - u'||_2
-		u.data[0] = norm;
+		/*u.data[0] = norm;
 		for (size_t i = 1; i < u.size_; i++) {
 			u.data[i] = 0;
-		}
-		ReflectVector(Au, w, 0);
+		}*/
+		ReflectVector(u, w);
+		ReflectVector(Au, w);
+		ReflectVector(A2u, w);
 
-		auto norm = Au.EuñlideanNorm();
-		Vector<double> w2(Au);
-		w2.data[0] -= norm;
-		w2.NormalizeEuclidean(); // w = u - u' / ||u - u'||_2
-		u.data[0] = norm;
-		for (size_t i = 1; i < u.size_; i++) {
-			u.data[i] = 0;
+		norm = 0;
+		for (size_t i = 1; i < Au.size_; i++) {
+			norm += Au.data[i] * Au.data[i];
 		}
+		norm = sqrt(norm);
+		w = Au;
+		w.data[0] = 0;
+		w.data[1] -= norm;
+		w.NormalizeEuclidean(); // w = u - u' / ||u - u'||_2
+		/*Au.data[1] = norm;
+		for (size_t i = 2; i < Au.size_; i++) {
+			Au.data[i] = 0;
+		}*/
+		ReflectVector(Au, w);
+		ReflectVector(A2u, w);
+
+		double c1 = -A2u.data[1] / Au.data[1];
+		double c0 = (-A2u.data[0] - Au.data[0]*c1) / u.data[0];
+		return { c1, c0 };
 	}
 
 	static std::vector<std::complex<double>> QRalgorithm(Matrix<double> m, double eps) {

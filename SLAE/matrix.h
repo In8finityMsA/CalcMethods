@@ -7,7 +7,6 @@
 #include <vector>
 #include <cmath>
 #include "vector.h"
-#include "LinAlEntity.h"
 
 constexpr double epsilon = 10e-15;
 

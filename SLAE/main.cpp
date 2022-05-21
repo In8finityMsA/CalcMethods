@@ -74,14 +74,39 @@ int main() {
 	auto hessenberg2 = MatrixUtils::GetHessenbergForm(mat2);
 	hessenberg2.print();
 
-	auto eig = EigenValues::QRalgorithm(hessenberg2, 1e-15);
+	/*auto eig = EigenValues::QRalgorithm(hessenberg2, 1e-15);
 	for (size_t i = 0; i < eig.size(); i++) {
 		std::cout << eig[i] << '\n';
-	}
+	}*/
 
-	Matrix<double> mat0(std::vector<std::vector<double>>({ {1,2,3}, {3,2,1}, {2,1,3} }));
-	auto power = EigenValues::PowerMethod(mat2, 1e-10);
-	std::cout << "Eig value: " << power.eig_val << '\n';
+	Matrix<double> mat0(std::vector<std::vector<double>>({ {18, -8, -20}, {20, -10, -20}, {8, -8, -10} }));
+	Matrix<double> mat00(std::vector<std::vector<double>>({ {3, 1, -2}, {0, 1, 0}, {2, -3, -1} }));
+	Vector<double> vec0({ 1,2,-2 });
+	Vector<double> vec1({ 2,-1,-6 });
+	Vector<double> vec2({ -2,1,3 });
+	auto coef = EigenValues::LinearLeastSquares(vec0, vec1, vec2);
+	auto res = EigenValues::SolveQuadratic(29, 13, 44);
+
+	auto mat_cur = mat00;
+	auto power = EigenValues::PowerMethod(mat_cur, 1e-15);
+	std::cout << "\nEig value: " << power.eig_val << '\n';
+	std::cout << "\nEig vector: " << '\n';
 	power.eig_vec.print();
+	std::cout << "\nResidual vector: " << '\n';
+
+	Matrix<std::complex<double>> mat_compl{ mat_cur.Size() };
+	for (size_t i = 0; i < mat_cur.Size(); i++) {
+		for (size_t j = 0; j < mat_cur.Size(); j++) {
+			mat_compl(i,j) = mat_cur(i,j);
+		}
+	}
+	((mat_compl * power.eig_vec) - (power.eig_vec * power.eig_val)).print();
+
+	if (power.eig_vec2.has_value()) {
+		std::cout << "\nEig value2: " << power.eig_val2.value() << '\n';
+		power.eig_vec2.value().print();
+		std::cout << "\nResidual vector: " << '\n';
+		((mat_compl * power.eig_vec) - (power.eig_vec * power.eig_val)).print();
+	}
 	return 0;
 }
