@@ -30,9 +30,8 @@ public:
 
 		std::pair<Complex, Complex> eig_values{ {},{} };
 		std::pair<Complex, Complex> eig_values_old{ {},{} };
-		std::pair<Complex, Complex> eig_values_old2{ {},{} };
 		bool check_loop = false;
-		while (iteration < 20000) {
+		while (iteration < 200000) {
 			++iteration;
 
 			for (size_t i = 1; i < b_size; i++) {
@@ -46,19 +45,6 @@ public:
 			double delta2 = abs(abs(eig_values.second) - abs(eig_values_old.second));
 			if (delta1 < eps && delta2 < eps) {
 				return PowerResult(eig_values, batch_vec[b_size - 1], batch_vec[b_size - 2], iteration, eps);
-			} else if (delta1 < eps || delta2 < eps) {
-				/*if (!check_loop) {
-					eig_values_old2 = eig_values;
-					check_loop = true;
-				} else {
-					double delta1 = abs(abs(eig_values.first) - abs(eig_values_old2.first));
-					double delta2 = abs(abs(eig_values.second) - abs(eig_values_old2.second));
-					if (delta1 < eps && delta2 < eps) {
-						return PowerResult(eig_values, batch_vec[b_size - 1], batch_vec[b_size - 2], iteration, eps);
-					}
-					eig_values_old2 = eig_values_old;
-				}*/
-
 			}
 
 			eig_values_old = eig_values;
@@ -120,13 +106,13 @@ public:
 	static std::pair<double, double> LinearLeastSquares(Vector<double> u, Vector<double> Au, Vector<double> A2u) {
 		auto norm = u.EuñlideanNorm();
 		Vector<double> w(u);
-		w.data[0] -= norm; //copysign(norm, w.data[0]);
+		norm = copysign(norm, -w.data[0]); // sign of a norm is opposite to a_0 to avoid substracting close values
+		w.data[0] -= norm;
 		w.NormalizeEuclidean(); // w = u - u' / ||u - u'||_2
-		/*u.data[0] = norm;
+		u.data[0] = norm; // a' = {||a||_2, 0...}
 		for (size_t i = 1; i < u.size_; i++) {
 			u.data[i] = 0;
-		}*/
-		ReflectVector(u, w);
+		}
 		ReflectVector(Au, w);
 		ReflectVector(A2u, w);
 
@@ -134,19 +120,18 @@ public:
 		for (size_t i = 1; i < Au.size_; i++) {
 			norm += Au.data[i] * Au.data[i];
 		}
-		norm = sqrt(norm);
+		norm = copysign(sqrt(norm), -w.data[1]); // sign of a norm is opposite to a_1 to avoid substracting close values
 		w = Au;
 		w.data[0] = 0;
 		w.data[1] -= norm;
 		w.NormalizeEuclidean(); // w = u - u' / ||u - u'||_2
-		/*Au.data[1] = norm;
+		Au.data[1] = norm; // a' = {||a||_2, 0...}
 		for (size_t i = 2; i < Au.size_; i++) {
 			Au.data[i] = 0;
-		}*/
-		ReflectVector(Au, w);
+		}
 		ReflectVector(A2u, w);
 
-		double c1 = -A2u.data[1] / Au.data[1];
+		double c1 = -A2u.data[1] / Au.data[1]; // minus for A2u because we solve ||{u,Au}x + A2u|| -> min
 		double c0 = (-A2u.data[0] - Au.data[0]*c1) / u.data[0];
 		return { c1, c0 };
 	}
@@ -237,7 +222,10 @@ public:
 			} else if (value_type[i] == COMPLEX && value_type[i+1] == COMPLEX) {
 				double b = m.data[i][i] + m.data[i + 1][i + 1];
 				double d = b * b - 4 * (m.data[i][i] * m.data[i + 1][i + 1] - m.data[i + 1][i] * m.data[i][i + 1]);
-				double sqrt_d = d < 0 ? sqrt(-d) : 0;
+				if (d >= 0) {
+					return {}; // Need more iterations
+				}
+				double sqrt_d = sqrt(-d);
 
 				double real = b / 2;
 				double complex = sqrt_d / 2;

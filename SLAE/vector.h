@@ -206,9 +206,9 @@ public:
 #pragma endregion
 
 #pragma region presentation
-	void print() {
+	void print(size_t precision = 3) {
 		for (size_t i = 0; i < size_; i++) {
-			std::cout << std::setw(6) << std::setprecision(3) << data[i] << std::endl;
+			std::cout << std::setw(3+precision) << std::setprecision(precision) << data[i] << std::endl;
 		}
 	}
 #pragma endregion

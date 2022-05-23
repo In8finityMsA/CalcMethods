@@ -5,6 +5,7 @@
 #include "vector.h"
 #include "MatrixUtils.h"
 #include "eigen_values.h"
+#include <iomanip>
 
 #define N 13
 
@@ -55,39 +56,33 @@ std::vector<std::vector<double>> A2 = {
 
 int main() {
 	auto interval = NonLinearSolve::DichotomyInterval(func, { 0, 2 }, 1e-4);
-	std::cout << "{ " << interval.first.left << ", " << interval.first.right << " }\n";
+	std::cout << "{ " << interval.first.left << ", " << interval.first.right << " }. Iterations: " << interval.second << '\n';
 	auto root_newton = NonLinearSolve::NewtonMethod(func, func_derivative, interval.first, 1e-15);
 	printf("Result newton: %.15f. Iterations: %zu\n", root_newton.first, root_newton.second);
+	auto root_newton2 = NonLinearSolve::NewtonMethod(func, interval.first, 1e-15, 1e-5);
+	printf("Result newton without derivative: %.15f. Iterations: %zu\n", root_newton2.first, root_newton2.second);
 	auto root_dichotomy = NonLinearSolve::DichotomyMethod(func, { 0, 2 }, 1e-15);
-	printf("Result dichotomy: %.15f. Iterations: %zu\n", root_dichotomy.first, root_dichotomy.second);
+	printf("Result dichotomy: %.15f. Iterations: %zu\n\n", root_dichotomy.first, root_dichotomy.second);
 
 	std::vector<std::vector<double>> A1_ = { {pow(N, 2) + 15, N - 1, -1, -2},
 										   {N - 1, -15 - pow(N, 2), -N + 4, -4},
 										   {-1, -N + 4, pow(N,2) + 8, -N},
 										   {-2, -4, -N, pow(N,2) + 10} };
-
+	Matrix<double> mat0(std::vector<std::vector<double>>({ {18, -8, -20}, {20, -10, -20}, {8, -8, -10} }));
 	Matrix<double> mat1(A1);
 	auto hessenberg1 = MatrixUtils::GetHessenbergForm(mat1);
 	//hessenberg1.print();
 
 	Matrix<double> mat2(A2);
 	auto hessenberg2 = MatrixUtils::GetHessenbergForm(mat2);
-	hessenberg2.print();
+	//hessenberg2.print();
 
-	/*auto eig = EigenValues::QRalgorithm(hessenberg2, 1e-15);
+	auto eig = EigenValues::QRalgorithm(hessenberg1, 1e-15);
 	for (size_t i = 0; i < eig.size(); i++) {
-		std::cout << eig[i] << '\n';
-	}*/
+		std::cout << std::setprecision(15) << eig[i] << '\n';
+	}
 
-	Matrix<double> mat0(std::vector<std::vector<double>>({ {18, -8, -20}, {20, -10, -20}, {8, -8, -10} }));
-	Matrix<double> mat00(std::vector<std::vector<double>>({ {3, 1, -2}, {0, 1, 0}, {2, -3, -1} }));
-	Vector<double> vec0({ 1,2,-2 });
-	Vector<double> vec1({ 2,-1,-6 });
-	Vector<double> vec2({ -2,1,3 });
-	auto coef = EigenValues::LinearLeastSquares(vec0, vec1, vec2);
-	auto res = EigenValues::SolveQuadratic(29, 13, 44);
-
-	auto mat_cur = mat00;
+	auto mat_cur = mat1;
 	auto power = EigenValues::PowerMethod(mat_cur, 1e-15);
 	std::cout << "\nEig value: " << power.eig_val << '\n';
 	std::cout << "\nEig vector: " << '\n';

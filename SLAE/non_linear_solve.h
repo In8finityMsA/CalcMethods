@@ -34,6 +34,19 @@ public:
 		return { x_cur, iteration };
 	}
 
+	static std::pair<double, size_t> NewtonMethod(Function f, Interval root_interval, double eps, double delta) {
+		double x_prev = 0;
+		double x_cur = root_interval.left;
+		size_t iteration = 0;
+		do {
+			x_prev = x_cur;
+			x_cur = x_prev - (f(x_prev) * delta) / (f(x_prev + delta) - f(x_prev));
+			//printf("#%d  x: %.15f, f(x): %.15f\n", iteration+1, x_cur, f(x_cur));
+			++iteration;
+		} while (std::abs(x_cur - x_prev) > eps);
+		return { x_cur, iteration };
+	}
+
 	static std::pair<double, size_t> DichotomyMethod(Function f, Interval root_interval, double eps) {
 		size_t iteration = 0;
 		while (root_interval.getLength() > 2*eps) {
@@ -59,6 +72,7 @@ public:
 			} else {
 				root_interval.right = median;
 			}
+			++iteration;
 		}
 		return { root_interval, iteration };
 	}
